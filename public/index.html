@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuraFocus — Premium Chrome Focus Extension</title>
+  <meta name="description" content="AuraFocus is a password-protected Chrome Extension that blocks distracting websites so you can focus on what matters. Download free." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Animated background -->
+  <div class="bg-glow">
+    <div class="glow-orb gold"></div>
+    <div class="glow-orb red"></div>
+    <div class="glow-orb blue"></div>
+  </div>
+  <div class="grid-overlay"></div>
+
+  <!-- Nav -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">AURA<span class="gold">FOCUS</span></a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="#allowed">Allowed Sites</a>
+      </div>
+      <a href="/download" class="btn btn-nav" id="nav-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-badge">FREE CHROME EXTENSION</div>
+    <h1 class="hero-title">
+      Block Distractions.<br />
+      <span class="gradient-text">Own Your Focus.</span>
+    </h1>
+    <p class="hero-subtitle">
+      AuraFocus locks your browser into focus mode. Whitelisted sites and 60+ educational platforms stay accessible. Everything else gets blocked — and it stays that way until your timer ends.
+    </p>
+
+    <div class="hero-cta">
+      <a href="/download" class="btn btn-primary btn-large" id="hero-download-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Extension (.zip)
+      </a>
+      <a href="https://github.com/Aswath54/focus-tracker-extension" target="_blank" class="btn btn-ghost btn-large">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num">60+</span>
+        <span class="stat-label">Educational Sites Allowed</span>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <span class="stat-num">100%</span>
+        <span class="stat-label">Password Protected</span>
+      </div>
+      <div class="stat-div"></div>
+      <div class="stat">
+        <span class="stat-num">Free</span>
+        <span class="stat-label">Open Source</span>
+      </div>
+    </div>
+
+    <!-- Fake browser mockup -->
+    <div class="browser-mockup">
+      <div class="browser-bar">
+        <div class="browser-dots">
+          <span class="dot red-dot"></span>
+          <span class="dot yellow-dot"></span>
+          <span class="dot green-dot"></span>
+        </div>
+        <div class="browser-url">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          focus locked · aurafocus.app
+        </div>
+      </div>
+      <div class="browser-body">
+        <div class="mock-blocked-page">
+          <div class="mock-shield">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="mock-title">FOCUS LOCK <span class="mock-active">ACTIVE</span></div>
+          <div class="mock-subtitle">This site is blocked during your focus session.</div>
+          <div class="mock-timer">18:42</div>
+          <div class="mock-label">TIME REMAINING</div>
+          <div class="mock-quote">"Deep work is the superpower of the 21st century."</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="section" id="features">
+    <div class="section-inner">
+      <div class="section-header">
+        <span class="section-tag">BUILT FOR FOCUS</span>
+        <h2 class="section-title">Everything you need to stay locked in</h2>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card highlighted">
+          <div class="feature-icon">🔒</div>
+          <h3>Password Locked Sessions</h3>
+          <p>Set a timer and lock it in. The blocker cannot be turned off without entering your configuration password — keeping you accountable.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Custom Whitelist</h3>
+          <p>Add any domains you need for your work — Notion, Figma, Slack — and they'll be available while everything else stays blocked.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎓</div>
+          <h3>60+ Educational Sites Always On</h3>
+          <p>Wikipedia, Khan Academy, StackOverflow, GitHub, Kiddle, Gale, JSTOR and many more are automatically whitelisted — no setup needed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⏱️</div>
+          <h3>Pomodoro-Style Timers</h3>
+          <p>25m focus, 50m deep work, 5m or 15m breaks. Or set a fully custom duration up to 12 hours.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Instant Network-Level Blocking</h3>
+          <p>Built with Chrome's Declarative Net Request API — blocking happens at the network layer before pages even load. No sneaking through.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✨</div>
+          <h3>Beautiful Focus Screen</h3>
+          <p>When a site is blocked, you see a premium glassmorphic screen with a live countdown, random motivational quotes, and a password bypass form.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section section-dark" id="how">
+    <div class="section-inner">
+      <div class="section-header">
+        <span class="section-tag">SIMPLE SETUP</span>
+        <h2 class="section-title">Up and running in 60 seconds</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <h3>Download the .zip</h3>
+            <p>Click the download button and save the AuraFocus extension zip to your computer.</p>
+          </div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <h3>Load in Chrome</h3>
+            <p>Go to <code>chrome://extensions</code>, enable Developer Mode, click <strong>Load unpacked</strong>, and select the extracted folder.</p>
+          </div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <h3>Set Your Password</h3>
+            <p>Pin the extension, open it, and set your lock password. Add your custom whitelist sites.</p>
+          </div>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step">
+          <div class="step-num">04</div>
+          <div class="step-body">
+            <h3>Start Focusing</h3>
+            <p>Choose a timer preset or enter a custom duration and hit <strong>Start Locked Session</strong>. That's it.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="install-note">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        After extracting the zip, select the <strong>unzipped folder</strong> (not the zip itself) when loading in Chrome.
+      </div>
+    </div>
+  </section>
+
+  <!-- Allowed Sites -->
+  <section class="section" id="allowed">
+    <div class="section-inner">
+      <div class="section-header">
+        <span class="section-tag">ALWAYS AVAILABLE</span>
+        <h2 class="section-title">60+ educational sites never blocked</h2>
+        <p class="section-sub">These domains are automatically whitelisted and cannot be accidentally blocked during any focus session.</p>
+      </div>
+      <div class="allowed-grid">
+        <div class="allowed-category">
+          <h4>📚 Reference & Research</h4>
+          <ul>
+            <li>wikipedia.org</li><li>britannica.com</li><li>arxiv.org</li>
+            <li>scholar.google.com</li><li>nih.gov</li><li>nasa.gov</li>
+            <li>loc.gov</li><li>jstor.org</li><li>proquest.com</li>
+          </ul>
+        </div>
+        <div class="allowed-category">
+          <h4>🎓 Learning Platforms</h4>
+          <ul>
+            <li>khanacademy.org</li><li>coursera.org</li><li>edx.org</li>
+            <li>duolingo.com</li><li>quizlet.com</li><li>ck12.org</li>
+            <li>brainpop.com</li><li>ixl.com</li><li>discoveryeducation.com</li>
+          </ul>
+        </div>
+        <div class="allowed-category">
+          <h4>💻 Developer Tools</h4>
+          <ul>
+            <li>stackoverflow.com</li><li>github.com</li><li>w3schools.com</li>
+            <li>developer.mozilla.org</li><li>docs.microsoft.com</li>
+            <li>google.com</li>
+          </ul>
+        </div>
+        <div class="allowed-category">
+          <h4>🏫 School Portals & LMS</h4>
+          <ul>
+            <li>classroom.google.com</li><li>instructure.com</li>
+            <li>clever.com</li><li>classlink.com</li><li>seesaw.me</li>
+            <li>kahoot.com</li><li>desmos.com</li><li>geogebra.org</li>
+          </ul>
+        </div>
+        <div class="allowed-category">
+          <h4>🔬 Universities</h4>
+          <ul>
+            <li>mit.edu</li><li>stanford.edu</li><li>harvard.edu</li>
+            <li>berkeley.edu</li>
+          </ul>
+        </div>
+        <div class="allowed-category">
+          <h4>✍️ Writing & Study</h4>
+          <ul>
+            <li>grammarly.com</li><li>turnitin.com</li><li>typing.com</li>
+            <li>typingclub.com</li><li>soraapp.com</li><li>overdrive.com</li>
+            <li>kiddle.co</li><li>gale.com</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download CTA -->
+  <section class="section cta-section">
+    <div class="cta-card">
+      <div class="cta-glow"></div>
+      <h2 class="cta-title">Ready to focus like never before?</h2>
+      <p class="cta-sub">Download AuraFocus free. No account. No tracking. Just focus.</p>
+      <a href="/download" class="btn btn-primary btn-large" id="cta-download-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download AuraFocus Free
+      </a>
+      <p class="cta-hint">Works on Chrome, Brave, and Edge · Open source on GitHub</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="footer-logo">AURA<span class="gold">FOCUS</span></span>
+      <span class="footer-copy">© 2026 AuraFocus · Built for deep work · <a href="https://github.com/Aswath54/focus-tracker-extension" target="_blank">GitHub</a></span>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "AuraFocus Tracker",
+  "version": "1.0.0",
+  "description": "A premium, password-protected focus sessions tracker and website blocker.",
+  "permissions": [
+    "storage",
+    "declarativeNetRequest",
+    "tabs",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "blocked.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.svg"
+  },
+  "icons": {
+    "16": "icon.svg",
+    "32": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraFocus Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="extension-container">
+    
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-group">
+        <svg class="app-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="24" height="24">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffb000" />
+              <stop offset="100%" stop-color="#ff3344" />
+            </linearGradient>
+          </defs>
+          <rect x="10" y="10" width="108" height="108" rx="24" fill="none" stroke="url(#logoGrad)" stroke-width="8" />
+          <path d="M64,30 C50,30 46,40 46,50 L46,60 L40,60 L40,98 L88,98 L88,60 L82,60 L82,50 C82,40 78,30 64,30 Z M54,50 C54,44 56,38 64,38 C72,38 74,44 74,50 L74,60 L54,60 Z" fill="url(#logoGrad)" />
+        </svg>
+        <span class="logo-text">AURA<span class="gold-text">FOCUS</span></span>
+      </div>
+      <div class="status-indicator-wrapper">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="status-label" class="status-label">Idle</span>
+      </div>
+    </header>
+
+    <!-- Content Sections -->
+    <main class="main-content">
+      
+      <!-- Section 1: Set Password Setup (Shown when password not configured) -->
+      <section id="sec-setup-password" class="auth-card" style="display: none;">
+        <div class="card-icon-container">
+          <svg class="secure-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <h2>Configure Lock Password</h2>
+        <p class="description">Create a password to prevent turning off the blocker or modifying the whitelist while your focus timer is active.</p>
+        
+        <form id="password-setup-form" class="form-group">
+          <div class="input-wrapper">
+            <input type="password" id="new-password" placeholder="Enter session password" required minlength="4">
+          </div>
+          <div class="input-wrapper">
+            <input type="password" id="confirm-password" placeholder="Confirm password" required minlength="4">
+          </div>
+          <div id="password-setup-error" class="error-msg" style="display: none;"></div>
+          <button type="submit" class="btn btn-primary btn-glow">Save Password & Lock</button>
+        </form>
+      </section>
+
+      <!-- Section 2: Active Focus Session View (Shown when session is running) -->
+      <section id="sec-active-session" style="display: none;">
+        <div class="timer-display-container">
+          <div class="glow-ring"></div>
+          <div class="timer-circle-wrap">
+            <div class="timer-time" id="countdown-text">25:00</div>
+            <div class="timer-label">STAY FOCUSED</div>
+          </div>
+        </div>
+
+        <!-- Lock Control (Stop Session) -->
+        <div class="unlock-panel card">
+          <h3>Unlock Focus Session</h3>
+          <p class="unlock-desc">Enter your configuration password to disable the lock early.</p>
+          <div class="unlock-form">
+            <input type="password" id="unlock-password-input" placeholder="Password">
+            <button id="btn-unlock" class="btn btn-secondary">Stop Session</button>
+          </div>
+          <div id="unlock-error" class="error-msg" style="display: none;"></div>
+        </div>
+      </section>
+
+      <!-- Section 3: Idle View / Timer Selection (Shown when session is not running) -->
+      <section id="sec-idle-session" style="display: none;">
+        <!-- Timer Quick Selects -->
+        <div class="timer-options">
+          <button class="preset-btn active" data-seconds="1500">25m <span class="preset-sub">Focus</span></button>
+          <button class="preset-btn" data-seconds="3000">50m <span class="preset-sub">Focus</span></button>
+          <button class="preset-btn" data-seconds="300">5m <span class="preset-sub">Break</span></button>
+          <button class="preset-btn" data-seconds="900">15m <span class="preset-sub">Break</span></button>
+        </div>
+
+        <!-- Custom Timer Trigger -->
+        <div class="custom-timer-container">
+          <label for="custom-minutes">Custom Duration (minutes):</label>
+          <div class="custom-timer-row">
+            <input type="number" id="custom-minutes" min="1" max="720" value="25">
+            <button id="btn-set-custom" class="btn btn-secondary">Set</button>
+          </div>
+        </div>
+
+        <!-- Start Button -->
+        <div class="start-action-container">
+          <button id="btn-start-focus" class="btn btn-primary btn-glow btn-large">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Start Locked Session
+          </button>
+        </div>
+      </section>
+
+      <!-- Whitelist Section (Always available, but conditionally locked during active sessions) -->
+      <section id="sec-whitelist" class="card" style="display: none;">
+        <div class="whitelist-header">
+          <h3>Whitelisted Sites</h3>
+          <div class="whitelist-tooltip">Sites allowed during focus</div>
+        </div>
+        
+        <div class="whitelist-editor">
+          <div class="add-site-row">
+            <input type="text" id="new-site-input" placeholder="e.g., github.com">
+            <button id="btn-add-site" class="btn btn-secondary">Add</button>
+          </div>
+          <div id="whitelist-action-error" class="error-msg" style="display: none;"></div>
+          
+          <ul id="whitelist-list" class="site-list">
+            <!-- Dynamically populated -->
+          </ul>
+        </div>
+
+        <div id="whitelist-lock-overlay" class="lock-overlay" style="display: none;">
+          <div class="overlay-content">
+            <svg class="overlay-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <p>Whitelist is locked during session</p>
+            <button id="btn-prompt-unlock-whitelist" class="btn btn-secondary btn-small">Unlock Settings</button>
+          </div>
+        </div>
+
+        <div id="whitelist-unlock-input-container" class="lock-overlay" style="display: none;">
+          <div class="overlay-content">
+            <p>Enter Password to edit whitelist:</p>
+            <div class="unlock-form">
+              <input type="password" id="whitelist-unlock-password" placeholder="Password">
+              <button id="btn-confirm-unlock-whitelist" class="btn btn-primary">Confirm</button>
+            </div>
+            <button id="btn-cancel-unlock-whitelist" class="btn-text">Cancel</button>
+            <div id="whitelist-unlock-error" class="error-msg" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Change Password Section -->
+      <section id="sec-change-password" class="card" style="display: none;">
+        <div class="whitelist-header">
+          <h3>Change Password</h3>
+        </div>
+        <form id="change-password-form" class="form-group">
+          <div class="input-wrapper">
+            <input type="password" id="change-old-password" placeholder="Old password" required>
+          </div>
+          <div class="input-wrapper">
+            <input type="password" id="change-new-password" placeholder="New password" required minlength="4">
+          </div>
+          <div class="input-wrapper">
+            <input type="password" id="change-confirm-password" placeholder="Confirm new password" required minlength="4">
+          </div>
+          <div id="change-password-error" class="error-msg" style="display: none;"></div>
+          <div id="change-password-success" class="success-msg" style="display: none;">Password updated successfully!</div>
+          <button type="submit" class="btn btn-secondary btn-glow">Update Password</button>
+        </form>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p class="edu-notice">Educational sites (e.g. Wikipedia, StackOverflow) are allowed automatically.</p>
+    </footer>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

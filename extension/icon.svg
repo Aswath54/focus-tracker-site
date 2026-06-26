@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb000" />
+      <stop offset="50%" stop-color="#ff5e62" />
+      <stop offset="100%" stop-color="#ff3344" />
+    </linearGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Background Shield or Circle with Glassmorphism -->
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="#0b0e14" stroke="url(#glowGrad)" stroke-width="4" />
+  
+  <!-- Outer glowing rings -->
+  <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(255, 176, 0, 0.15)" stroke-width="1" />
+  <circle cx="64" cy="64" r="44" fill="none" stroke="rgba(255, 51, 68, 0.1)" stroke-dasharray="4 8" stroke-width="1.5" />
+
+  <!-- Shield Shape -->
+  <path d="M64,24 C80,24 88,32 88,48 C88,72 64,88 64,88 C64,88 40,72 40,48 C40,32 48,24 64,24 Z" fill="none" stroke="url(#glowGrad)" stroke-width="4.5" stroke-linejoin="round" filter="url(#glow)" />
+  
+  <!-- Lock Bar -->
+  <path d="M54,48 L54,42 C54,36 58,32 64,32 C70,32 74,36 74,42 L74,48" fill="none" stroke="url(#glowGrad)" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Inner lock core -->
+  <rect x="50" y="48" width="28" height="22" rx="4" fill="url(#glowGrad)" />
+  <circle cx="64" cy="59" r="2.5" fill="#0b0e14" />
+  <path d="M64,61.5 L64,66" stroke="#0b0e14" stroke-width="2" stroke-linecap="round" />
+</svg>

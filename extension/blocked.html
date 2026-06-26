@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraFocus - Stay Focused</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="blocked.css">
+</head>
+<body>
+  <div class="blocked-container">
+    <div class="glow-bg-elements">
+      <div class="glow-circle gold"></div>
+      <div class="glow-circle red"></div>
+    </div>
+    
+    <div class="glass-card">
+      <div class="lock-shield-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="shield-icon">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+      </div>
+
+      <header class="card-header">
+        <h1 class="restricted-title">FOCUS LOCK <span class="active-text">ACTIVE</span></h1>
+        <p class="blocked-message">Access to <span id="blocked-url-display" class="highlight-domain">this website</span> is blocked during focus sessions.</p>
+      </header>
+
+      <!-- Motivation Section -->
+      <blockquote class="motivational-quote">
+        <p id="quote-text">"Focus is a muscle, and you are building it right now."</p>
+        <cite id="quote-author">— AuraFocus</cite>
+      </blockquote>
+
+      <!-- Timer Section -->
+      <div class="timer-section">
+        <div class="countdown-card">
+          <div class="countdown-value" id="countdown-timer">00:00</div>
+          <div class="countdown-label">REMAINING FOCUS TIME</div>
+        </div>
+      </div>
+
+      <!-- Unlock Section -->
+      <section class="bypass-section">
+        <h2>Deactivate Focus Early?</h2>
+        <p class="bypass-description">If you absolutely must exit focus mode, enter your lock password below to deactivate the blocker.</p>
+        
+        <div class="bypass-form">
+          <input type="password" id="bypass-password" placeholder="Enter configuration password">
+          <button id="btn-bypass" class="btn btn-primary btn-glow">Deactivate Blocker</button>
+        </div>
+        <div id="bypass-error" class="error-msg" style="display: none;"></div>
+      </section>
+
+      <!-- Educational sites hint -->
+      <footer class="blocked-footer">
+        <p>💡 Tip: Educational sites like Wikipedia, StackOverflow, and GitHub are automatically allowed.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
