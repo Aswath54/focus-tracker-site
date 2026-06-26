@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentAllowedUrls = [];
 
   // Initialize view
+  setupPasswordToggles();
   await refreshState();
 
   // --- STATE AND VIEW MANAGEMENT ---
@@ -264,6 +265,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       emptyLi.style.color = "var(--text-muted)";
       emptyLi.textContent = "No whitelisted sites. All blocked.";
       whitelistList.appendChild(emptyLi);
+      
+      // Update history list rendering as well
+      renderHistory();
       return;
     }
 
@@ -292,6 +296,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       li.appendChild(deleteBtn);
       whitelistList.appendChild(li);
     });
+
+    // Update history list rendering to reflect currently whitelisted domains
+    renderHistory();
   }
 
   // Add site
@@ -346,6 +353,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       password: password
     }, (response) => {
       if (response && response.success) {
+        // If there was an item added, save it to history!
+        if (updatedUrls.length > currentAllowedUrls.length) {
+          const addedItem = updatedUrls[updatedUrls.length - 1];
+          addToWhitelistHistory(addedItem);
+        }
+
         newSiteInput.value = "";
         whitelistActionError.style.display = "none";
         currentAllowedUrls = updatedUrls;
@@ -353,6 +366,116 @@ document.addEventListener("DOMContentLoaded", async () => {
       } else {
         showError(whitelistActionError, response.error || "Failed to update whitelist.");
       }
+    });
+  }
+
+  // --- WHITELIST HISTORY & SEARCH ---
+  const historyList = document.getElementById("history-list");
+  const historySearch = document.getElementById("history-search");
+
+  if (historySearch) {
+    historySearch.addEventListener("input", (e) => {
+      renderHistory(e.target.value.trim());
+    });
+  }
+
+  async function addToWhitelistHistory(domain) {
+    const result = await chrome.storage.local.get("whitelistHistory");
+    let history = result.whitelistHistory || [];
+    
+    // Remove domain if it already exists to move it to the top (newest first)
+    history = history.filter(item => item.domain !== domain);
+    
+    // Unshift new entry
+    history.unshift({ domain: domain, timestamp: Date.now() });
+    
+    // Limit to last 50 items
+    if (history.length > 50) {
+      history = history.slice(0, 50);
+    }
+    
+    await chrome.storage.local.set({ whitelistHistory: history });
+    renderHistory(historySearch ? historySearch.value.trim() : "");
+  }
+
+  async function addSiteDirectly(domain) {
+    if (currentAllowedUrls.includes(domain)) {
+      showError(whitelistActionError, "Domain already in whitelist.");
+      return;
+    }
+    const updatedUrls = [...currentAllowedUrls, domain];
+    saveWhitelist(updatedUrls);
+    addToWhitelistHistory(domain); // Bring to the top of history
+  }
+
+  async function renderHistory(filterText = "") {
+    if (!historyList) return;
+    historyList.innerHTML = "";
+
+    const result = await chrome.storage.local.get("whitelistHistory");
+    const history = result.whitelistHistory || [];
+
+    // Filter out currently active whitelisted domains
+    let filteredHistory = history.filter(item => !currentAllowedUrls.includes(item.domain));
+
+    // Filter by search text if any
+    if (filterText) {
+      const lowerFilter = filterText.toLowerCase();
+      filteredHistory = filteredHistory.filter(item => item.domain.includes(lowerFilter));
+    }
+
+    if (filteredHistory.length === 0) {
+      const emptyLi = document.createElement("li");
+      emptyLi.className = "site-item";
+      emptyLi.style.justifyContent = "center";
+      emptyLi.style.color = "var(--text-muted)";
+      emptyLi.style.fontSize = "11px";
+      emptyLi.textContent = filterText ? "No matching history." : "No previous history.";
+      historyList.appendChild(emptyLi);
+      return;
+    }
+
+    filteredHistory.forEach(item => {
+      const li = document.createElement("li");
+      li.className = "site-item";
+
+      const span = document.createElement("span");
+      span.className = "site-domain";
+      span.textContent = item.domain;
+      span.title = item.domain;
+
+      const addBtn = document.createElement("button");
+      addBtn.className = "btn-add-history";
+      addBtn.textContent = "Add";
+      addBtn.addEventListener("click", () => {
+        addSiteDirectly(item.domain);
+      });
+
+      li.appendChild(span);
+      li.appendChild(addBtn);
+      historyList.appendChild(li);
+    });
+  }
+
+  // --- PASSWORD VISIBILITY TOGGLE ---
+  function setupPasswordToggles() {
+    document.querySelectorAll(".toggle-password-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const input = btn.parentElement.querySelector("input");
+        if (!input) return;
+
+        if (input.type === "password") {
+          input.type = "text";
+          btn.innerHTML = `
+            <svg class="eye-off-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+          `;
+        } else {
+          input.type = "password";
+          btn.innerHTML = `
+            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          `;
+        }
+      });
     });
   }
 

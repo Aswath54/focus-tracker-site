@@ -50,9 +50,15 @@
         <form id="password-setup-form" class="form-group">
           <div class="input-wrapper">
             <input type="password" id="new-password" placeholder="Enter session password" required minlength="4">
+            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
           <div class="input-wrapper">
             <input type="password" id="confirm-password" placeholder="Confirm password" required minlength="4">
+            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
           <div id="password-setup-error" class="error-msg" style="display: none;"></div>
           <button type="submit" class="btn btn-primary btn-glow">Save Password & Lock</button>
@@ -74,7 +80,12 @@
           <h3>Unlock Focus Session</h3>
           <p class="unlock-desc">Enter your configuration password to disable the lock early.</p>
           <div class="unlock-form">
-            <input type="password" id="unlock-password-input" placeholder="Password">
+            <div class="input-wrapper">
+              <input type="password" id="unlock-password-input" placeholder="Password">
+              <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+                <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
             <button id="btn-unlock" class="btn btn-secondary">Stop Session</button>
           </div>
           <div id="unlock-error" class="error-msg" style="display: none;"></div>
@@ -131,6 +142,19 @@
           </ul>
         </div>
 
+        <!-- Previously Allowed Sites Section -->
+        <div class="whitelist-history-section">
+          <div class="history-header">
+            <h4>Previously Allowed Sites</h4>
+            <div class="history-search-container">
+              <input type="text" id="history-search" placeholder="Search history...">
+            </div>
+          </div>
+          <ul id="history-list" class="site-list history-list">
+            <!-- Dynamically populated, newest first -->
+          </ul>
+        </div>
+
         <div id="whitelist-lock-overlay" class="lock-overlay" style="display: none;">
           <div class="overlay-content">
             <svg class="overlay-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -146,7 +170,12 @@
           <div class="overlay-content">
             <p>Enter Password to edit whitelist:</p>
             <div class="unlock-form">
-              <input type="password" id="whitelist-unlock-password" placeholder="Password">
+              <div class="input-wrapper">
+                <input type="password" id="whitelist-unlock-password" placeholder="Password">
+                <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+                  <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
               <button id="btn-confirm-unlock-whitelist" class="btn btn-primary">Confirm</button>
             </div>
             <button id="btn-cancel-unlock-whitelist" class="btn-text">Cancel</button>
@@ -163,12 +192,21 @@
         <form id="change-password-form" class="form-group">
           <div class="input-wrapper">
             <input type="password" id="change-old-password" placeholder="Old password" required>
+            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
           <div class="input-wrapper">
             <input type="password" id="change-new-password" placeholder="New password" required minlength="4">
+            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
           <div class="input-wrapper">
             <input type="password" id="change-confirm-password" placeholder="Confirm new password" required minlength="4">
+            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
           </div>
           <div id="change-password-error" class="error-msg" style="display: none;"></div>
           <div id="change-password-success" class="success-msg" style="display: none;">Password updated successfully!</div>

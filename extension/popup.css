@@ -171,6 +171,39 @@ p.description {
   width: 100%;
 }
 
+.unlock-form .input-wrapper {
+  flex: 1;
+}
+
+.input-wrapper input[type="password"] {
+  padding-right: 36px;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-speed);
+}
+
+.toggle-password-btn:hover {
+  color: var(--text-white);
+}
+
+.toggle-password-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 input[type="password"],
 input[type="text"],
 input[type="number"] {
@@ -624,4 +657,86 @@ input:focus {
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Whitelist History styles */
+.whitelist-history-section {
+  margin-top: 18px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-header h4 {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-white);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.history-search-container {
+  width: 140px;
+}
+
+.history-search-container input {
+  font-size: 11px;
+  padding: 6px 10px;
+  background-color: var(--bg-dark-3);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.history-list {
+  max-height: 100px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: rgba(6, 7, 11, 0.4);
+  padding: 4px;
+}
+
+.history-list .site-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.history-list .site-item:last-child {
+  border-bottom: none;
+}
+
+.history-list .site-domain {
+  color: var(--text-normal);
+  font-family: var(--font-body);
+}
+
+.history-list .btn-add-history {
+  background-color: var(--primary-gold-alpha);
+  color: var(--primary-gold);
+  border: 1px solid var(--primary-gold);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.history-list .btn-add-history:hover {
+  background-color: var(--primary-gold);
+  color: var(--bg-dark-1);
 }

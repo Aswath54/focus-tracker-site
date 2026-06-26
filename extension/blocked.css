@@ -251,12 +251,17 @@ body {
   margin: 8px auto 0 auto;
 }
 
-.bypass-form input {
+.bypass-form .input-wrapper {
   flex: 1;
+  position: relative;
+}
+
+.bypass-form input {
+  width: 100%;
   background-color: rgba(6, 7, 11, 0.6);
   border: 1px solid var(--border-color);
   color: var(--text-white);
-  padding: 12px 16px;
+  padding: 12px 36px 12px 16px; /* Right padding of 36px for the eye icon */
   border-radius: 6px;
   font-family: var(--font-body);
   font-size: 13px;
@@ -267,6 +272,31 @@ body {
   outline: none;
   border-color: var(--primary-gold);
   box-shadow: 0 0 6px var(--primary-gold-alpha);
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-speed);
+}
+
+.toggle-password-btn:hover {
+  color: var(--text-white);
+}
+
+.toggle-password-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .btn {
