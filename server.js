@@ -9,23 +9,17 @@ const PORT = process.env.PORT || 3000;
 // Serve static files (the landing page)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Extension files to include in the zip
-const EXTENSION_FILES = [
-  "manifest.json",
-  "background.js",
-  "popup.html",
-  "popup.css",
-  "popup.js",
-  "blocked.html",
-  "blocked.css",
-  "blocked.js",
-  "icon.svg"
-];
-
 const EXTENSION_DIR = path.join(__dirname, "extension");
 
-// Download endpoint — dynamically zips the extension on request
+// Download count tracker (in-memory for simplicity, resets on restart)
+let downloadCount = 0;
+
+// Download endpoint — dynamically zips the extension on request and tracks downloads
 app.get("/download", (req, res) => {
+  // Increment download tracker
+  downloadCount++;
+  console.log(`Download initiated. Total downloads: ${downloadCount}`);
+
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", "attachment; filename=AuraFocus-Extension.zip");
 
@@ -33,32 +27,26 @@ app.get("/download", (req, res) => {
 
   archive.on("error", (err) => {
     console.error("Archiver error:", err);
-    res.status(500).send("Failed to create download.");
+    if (!res.headersSent) {
+      res.status(500).send("Failed to create download.");
+    }
   });
 
   archive.pipe(res);
 
-  // Add each extension file to the zip
-  for (const file of EXTENSION_FILES) {
-    const filePath = path.join(EXTENSION_DIR, file);
-    if (fs.existsSync(filePath)) {
-      archive.file(filePath, { name: file });
-    }
+  // Dynamically archive the entire extension directory (excluding nothing)
+  if (fs.existsSync(EXTENSION_DIR)) {
+    archive.directory(EXTENSION_DIR, false);
+  } else {
+    console.error(`Extension directory not found at: ${EXTENSION_DIR}`);
   }
 
   archive.finalize();
 });
 
-// Download count tracker (in-memory for simplicity, resets on restart)
-let downloadCount = 0;
+// Stats API
 app.get("/api/stats", (req, res) => {
   res.json({ downloads: downloadCount });
-});
-
-// Increment on actual download
-app.get("/download", (req, res, next) => {
-  downloadCount++;
-  next();
 });
 
 app.listen(PORT, () => {
