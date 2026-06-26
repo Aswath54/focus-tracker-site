@@ -149,47 +149,100 @@
   <section class="section section-dark" id="how">
     <div class="section-inner">
       <div class="section-header">
-        <span class="section-tag">SIMPLE SETUP</span>
-        <h2 class="section-title">Up and running in 60 seconds</h2>
+        <span class="section-tag">HOW IT WORKS</span>
+        <h2 class="section-title">Guides & Setup</h2>
       </div>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">01</div>
-          <div class="step-body">
-            <h3>Download the .zip</h3>
-            <p>Click the download button and save the AuraFocus extension zip to your computer.</p>
+
+      <!-- Tab Buttons -->
+      <div class="tab-container">
+        <button class="tab-btn active" data-tab="install-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Installation Guide
+        </button>
+        <button class="tab-btn" data-tab="usage-tab">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+          Daily Usage Guide
+        </button>
+      </div>
+
+      <!-- Tab Content: Installation -->
+      <div id="install-tab" class="tab-content active">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-body">
+              <h3>Download the .zip</h3>
+              <p>Click the download button and save the AuraFocus extension zip to your computer.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-body">
+              <h3>Load in Chrome</h3>
+              <p>Go to <code>chrome://extensions</code>, enable Developer Mode, click <strong>Load unpacked</strong>, and select the extracted folder.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-body">
+              <h3>Set Your Password</h3>
+              <p>Pin the extension, open it, and set your lock password. Add your custom whitelist sites.</p>
+            </div>
+          </div>
+          <div class="step-arrow">→</div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-body">
+              <h3>Start Focusing</h3>
+              <p>Choose a timer preset or enter a custom duration and hit <strong>Start Locked Session</strong>. That's it.</p>
+            </div>
           </div>
         </div>
-        <div class="step-arrow">→</div>
-        <div class="step">
-          <div class="step-num">02</div>
-          <div class="step-body">
-            <h3>Load in Chrome</h3>
-            <p>Go to <code>chrome://extensions</code>, enable Developer Mode, click <strong>Load unpacked</strong>, and select the extracted folder.</p>
-          </div>
+
+        <div class="install-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          After extracting the zip, select the <strong>unzipped folder</strong> (not the zip itself) when loading in Chrome.
         </div>
-        <div class="step-arrow">→</div>
-        <div class="step">
-          <div class="step-num">03</div>
-          <div class="step-body">
-            <h3>Set Your Password</h3>
-            <p>Pin the extension, open it, and set your lock password. Add your custom whitelist sites.</p>
+      </div>
+
+      <!-- Tab Content: Daily Usage -->
+      <div id="usage-tab" class="tab-content">
+        <div class="usage-steps-grid">
+          <div class="usage-card">
+            <div class="usage-icon">🔑</div>
+            <div class="usage-step-num">STEP 1</div>
+            <h3>Configure Password</h3>
+            <p>On your first launch, create a lock password. This password prevents turning off the blocker or changing your whitelist during active focus sessions.</p>
           </div>
-        </div>
-        <div class="step-arrow">→</div>
-        <div class="step">
-          <div class="step-num">04</div>
-          <div class="step-body">
-            <h3>Start Focusing</h3>
-            <p>Choose a timer preset or enter a custom duration and hit <strong>Start Locked Session</strong>. That's it.</p>
+          <div class="usage-card">
+            <div class="usage-icon">📋</div>
+            <div class="usage-step-num">STEP 2</div>
+            <h3>Customize Whitelist</h3>
+            <p>Open the extension popup and list any custom domains you need for your work (e.g., <code>notion.so</code>, <code>figma.com</code>). All other domains will be blocked.</p>
+          </div>
+          <div class="usage-card">
+            <div class="usage-icon">⏱️</div>
+            <div class="usage-step-num">STEP 3</div>
+            <h3>Choose a Timer</h3>
+            <p>Select a quick Pomodoro preset (25m Focus, 50m Focus, 5m Break, 15m Break) or enter a custom duration in minutes up to 12 hours.</p>
+          </div>
+          <div class="usage-card">
+            <div class="usage-icon">🔒</div>
+            <div class="usage-step-num">STEP 4</div>
+            <h3>Lock In & Focus</h3>
+            <p>Click <strong>"Start Locked Session"</strong>. Your timer begins. Browsing blocked sites will display the secure AuraFocus locked screen.</p>
+          </div>
+          <div class="usage-card">
+            <div class="usage-icon">🔓</div>
+            <div class="usage-step-num">STEP 5</div>
+            <h3>Stopping Early</h3>
+            <p>Need to stop the timer or edit your whitelist? Enter your configuration password in the popup to pause or disable the lock safely.</p>
           </div>
         </div>
       </div>
 
-      <div class="install-note">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        After extracting the zip, select the <strong>unzipped folder</strong> (not the zip itself) when loading in Chrome.
-      </div>
     </div>
   </section>
 

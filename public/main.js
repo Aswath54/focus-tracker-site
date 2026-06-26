@@ -45,7 +45,7 @@ document.querySelectorAll('a[href^="#"]').forEach(link => {
 });
 
 // Scroll reveal animation
-const revealEls = document.querySelectorAll(".feature-card, .step, .allowed-category, .cta-card");
+const revealEls = document.querySelectorAll(".feature-card, .step, .usage-card, .allowed-category, .cta-card");
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -61,3 +61,29 @@ revealEls.forEach(el => {
   el.style.transition = "opacity 0.5s ease, transform 0.5s ease";
   observer.observe(el);
 });
+
+// Tab Switching for Guides (Installation vs Daily Usage)
+(function handleTabSwitching() {
+  const tabs = document.querySelectorAll(".tab-btn");
+  const contents = document.querySelectorAll(".tab-content");
+
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      // Remove active class from all tabs
+      tabs.forEach(t => t.classList.remove("active"));
+      // Add active class to clicked tab
+      tab.classList.add("active");
+
+      // Hide all contents
+      contents.forEach(c => c.classList.remove("active"));
+      // Show matching content
+      const targetContent = document.getElementById(tab.dataset.tab);
+      if (targetContent) {
+        targetContent.classList.add("active");
+        
+        // Trigger resize event to make sure any scroll reveals / intersection observers re-assess positions
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+  });
+})();

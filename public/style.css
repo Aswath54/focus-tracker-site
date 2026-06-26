@@ -527,3 +527,122 @@ ul { list-style: none; }
   .stat-div { display: none; }
   .cta-card { padding: 40px 24px; }
 }
+
+/* ── Tabs for How Section ── */
+.tab-container {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-family: var(--font-head);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--muted);
+  color: #fff;
+}
+.tab-btn.active {
+  background: var(--gold-alpha);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 20px var(--gold-glow);
+}
+.tab-content {
+  display: none;
+  animation: fadeIn 0.4s ease forwards;
+}
+.tab-content.active {
+  display: block;
+}
+
+/* ── Usage Grid ── */
+.usage-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+}
+.usage-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 20px;
+  text-align: left;
+  transition: all 0.25s;
+  display: flex;
+  flex-direction: column;
+}
+.usage-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255,176,0,0.2);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.usage-icon {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+.usage-step-num {
+  font-family: var(--font-head);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.usage-card h3 {
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 10px;
+}
+.usage-card p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.usage-card code {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: var(--gold);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 1200px) {
+  .usage-steps-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .usage-steps-grid {
+    grid-template-columns: 1fr;
+  }
+  .tab-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tab-btn {
+    justify-content: center;
+  }
+}
