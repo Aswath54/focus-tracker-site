@@ -194,7 +194,11 @@ async function updateBlockingRules(allowedUrls) {
 
 // Clean up and end focus session
 async function endFocusSession(notified = true) {
-  await chrome.storage.local.set({ isFocusActive: false, sessionEndTime: 0 });
+  await chrome.storage.local.set({ 
+    isFocusActive: false, 
+    sessionEndTime: 0,
+    showFeedbackPrompt: true
+  });
   await chrome.alarms.clear("focusTimer");
   await clearBlockingRules();
   

@@ -123,6 +123,43 @@
         </div>
       </section>
 
+      <!-- Section 4: Feedback Screen (Shown after a session completes) -->
+      <section id="sec-feedback" class="auth-card" style="display: none;">
+        <div class="card-icon-container">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 24px; height: 24px; color: var(--primary-gold);">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+          </svg>
+        </div>
+        <h2>Rate Your Session</h2>
+        <p class="description" style="margin-bottom: 16px;">How was your productivity during this focus session?</p>
+
+        <!-- Thumbs Section -->
+        <div class="feedback-thumbs-row">
+          <button type="button" id="btn-thumb-up" class="thumb-btn" aria-label="Thumbs Up">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+          </button>
+          <button type="button" id="btn-thumb-down" class="thumb-btn" aria-label="Thumbs Down">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm11-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>
+          </button>
+        </div>
+
+        <!-- Stars Section -->
+        <div class="feedback-stars-row">
+          <button type="button" class="star-btn" data-rating="1" aria-label="1 Star">★</button>
+          <button type="button" class="star-btn" data-rating="2" aria-label="2 Stars">★</button>
+          <button type="button" class="star-btn" data-rating="3" aria-label="3 Stars">★</button>
+          <button type="button" class="star-btn" data-rating="4" aria-label="4 Stars">★</button>
+          <button type="button" class="star-btn" data-rating="5" aria-label="5 Stars">★</button>
+        </div>
+
+        <div id="feedback-success-msg" class="success-msg" style="display: none; margin-bottom: 16px;">Thank you for your feedback! ✨</div>
+
+        <div style="display: flex; gap: 12px; width: 100%;">
+          <button id="btn-submit-feedback" class="btn btn-primary btn-glow" style="flex: 1;">Submit Rating</button>
+          <button id="btn-skip-feedback" class="btn btn-secondary" style="padding: 10px 14px;">Skip</button>
+        </div>
+      </section>
+
       <!-- Whitelist Section (Always available, but conditionally locked during active sessions) -->
       <section id="sec-whitelist" class="card" style="display: none;">
         <div class="whitelist-header">

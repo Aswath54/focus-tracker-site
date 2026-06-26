@@ -52,6 +52,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   const changePasswordError = document.getElementById("change-password-error");
   const changePasswordSuccess = document.getElementById("change-password-success");
 
+  // Feedback Elements
+  const secFeedback = document.getElementById("sec-feedback");
+  const btnThumbUp = document.getElementById("btn-thumb-up");
+  const btnThumbDown = document.getElementById("btn-thumb-down");
+  const starBtns = document.querySelectorAll(".star-btn");
+  const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
+  const btnSkipFeedback = document.getElementById("btn-skip-feedback");
+  const feedbackSuccessMsg = document.getElementById("feedback-success-msg");
+
   // Local popup states
   let activeDurationSeconds = 1500; // Default 25m
   let isWhitelistUnlocked = false; // Temp unlock for this popup instance
@@ -104,8 +113,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       } else {
         // Idle
-        showSection(secIdleSession);
-        updateStatus(false, "Idle");
+        chrome.storage.local.get("showFeedbackPrompt", (res) => {
+          if (res.showFeedbackPrompt) {
+            showSection(secFeedback);
+            updateStatus(false, "Feedback");
+            secWhitelist.style.display = "none"; // Hide whitelist during feedback
+            secChangePassword.style.display = "none";
+          } else {
+            showSection(secIdleSession);
+            updateStatus(false, "Idle");
+            secWhitelist.style.display = "block"; // Restore whitelist
+            secChangePassword.style.display = "block";
+          }
+        });
         stopLocalCountdown();
         
         // Whitelist is completely unlocked in idle mode
@@ -116,7 +136,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function showSection(sectionToShow) {
-    [secSetupPassword, secActiveSession, secIdleSession].forEach(sec => {
+    [secSetupPassword, secActiveSession, secIdleSession, secFeedback].forEach(sec => {
       sec.style.display = sec === sectionToShow ? "block" : "none";
     });
   }
@@ -565,6 +585,104 @@ document.addEventListener("DOMContentLoaded", async () => {
           showError(changePasswordError, response.error || "Failed to change password.");
         }
       });
+    });
+  }
+
+  // --- FEEDBACK RATING HANDLERS ---
+  let selectedRating = 0;
+  let selectedThumb = null; // 'up' or 'down'
+
+  // Thumb buttons
+  if (btnThumbUp && btnThumbDown) {
+    btnThumbUp.addEventListener("click", () => {
+      selectedThumb = selectedThumb === "up" ? null : "up";
+      updateThumbUI();
+    });
+
+    btnThumbDown.addEventListener("click", () => {
+      selectedThumb = selectedThumb === "down" ? null : "down";
+      updateThumbUI();
+    });
+  }
+
+  function updateThumbUI() {
+    if (selectedThumb === "up") {
+      btnThumbUp.classList.add("active-up");
+      btnThumbDown.classList.remove("active-down");
+    } else if (selectedThumb === "down") {
+      btnThumbDown.classList.add("active-down");
+      btnThumbUp.classList.remove("active-up");
+    } else {
+      btnThumbUp.classList.remove("active-up");
+      btnThumbDown.classList.remove("active-down");
+    }
+  }
+
+  // Star buttons
+  starBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rating = parseInt(btn.dataset.rating, 10);
+      selectedRating = selectedRating === rating ? 0 : rating;
+      updateStarsUI();
+    });
+  });
+
+  function updateStarsUI() {
+    starBtns.forEach(btn => {
+      const rating = parseInt(btn.dataset.rating, 10);
+      if (rating <= selectedRating) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
+
+  // Submit and Skip feedback
+  if (btnSubmitFeedback) {
+    btnSubmitFeedback.addEventListener("click", async () => {
+      const feedback = {
+        rating: selectedRating,
+        thumb: selectedThumb,
+        timestamp: Date.now()
+      };
+
+      const result = await chrome.storage.local.get("feedbackHistory");
+      const history = result.feedbackHistory || [];
+      history.push(feedback);
+      
+      await chrome.storage.local.set({ 
+        feedbackHistory: history, 
+        showFeedbackPrompt: false 
+      });
+
+      // Show success feedback
+      feedbackSuccessMsg.style.display = "block";
+
+      // Reset feedback form states
+      selectedRating = 0;
+      selectedThumb = null;
+      updateThumbUI();
+      updateStarsUI();
+
+      setTimeout(() => {
+        feedbackSuccessMsg.style.display = "none";
+        refreshState();
+      }, 1500);
+    });
+  }
+
+  if (btnSkipFeedback) {
+    btnSkipFeedback.addEventListener("click", async () => {
+      await chrome.storage.local.set({ showFeedbackPrompt: false });
+
+      // Reset feedback states
+      selectedRating = 0;
+      selectedThumb = null;
+      updateThumbUI();
+      updateStarsUI();
+
+      refreshState();
     });
   }
 

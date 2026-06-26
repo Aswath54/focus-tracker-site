@@ -740,3 +740,73 @@ input:focus {
   background-color: var(--primary-gold);
   color: var(--bg-dark-1);
 }
+
+/* Feedback Section styles */
+.feedback-thumbs-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.thumb-btn {
+  background-color: var(--bg-dark-3);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-speed);
+}
+
+.thumb-btn:hover {
+  color: var(--text-white);
+  border-color: var(--text-muted);
+}
+
+.thumb-btn.active-up {
+  background-color: rgba(57, 255, 20, 0.1);
+  color: #39ff14;
+  border-color: #39ff14;
+}
+
+.thumb-btn.active-down {
+  background-color: rgba(255, 51, 68, 0.1);
+  color: #ff3344;
+  border-color: #ff3344;
+}
+
+.thumb-btn svg {
+  width: 18px;
+  height: 16px;
+}
+
+.feedback-stars-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  color: var(--bg-dark-3);
+  text-shadow: 0 0 1px var(--border-color);
+  font-size: 26px;
+  cursor: pointer;
+  transition: color var(--transition-speed), transform 0.15s ease;
+}
+
+.star-btn:hover {
+  transform: scale(1.2);
+}
+
+.star-btn.active {
+  color: var(--primary-gold);
+  filter: drop-shadow(0 0 4px var(--primary-gold-glow));
+}
