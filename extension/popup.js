@@ -57,8 +57,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnThumbUp = document.getElementById("btn-thumb-up");
   const btnThumbDown = document.getElementById("btn-thumb-down");
   const starBtns = document.querySelectorAll(".star-btn");
+  const feedbackComments = document.getElementById("feedback-comments");
   const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
-  const btnSkipFeedback = document.getElementById("btn-skip-feedback");
   const feedbackSuccessMsg = document.getElementById("feedback-success-msg");
 
   // Local popup states
@@ -638,12 +638,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  // Submit and Skip feedback
+  // Submit feedback
   if (btnSubmitFeedback) {
     btnSubmitFeedback.addEventListener("click", async () => {
       const feedback = {
         rating: selectedRating,
         thumb: selectedThumb,
+        comments: feedbackComments ? feedbackComments.value.trim() : "",
         timestamp: Date.now()
       };
 
@@ -662,6 +663,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Reset feedback form states
       selectedRating = 0;
       selectedThumb = null;
+      if (feedbackComments) {
+        feedbackComments.value = "";
+      }
       updateThumbUI();
       updateStarsUI();
 
@@ -669,20 +673,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         feedbackSuccessMsg.style.display = "none";
         refreshState();
       }, 1500);
-    });
-  }
-
-  if (btnSkipFeedback) {
-    btnSkipFeedback.addEventListener("click", async () => {
-      await chrome.storage.local.set({ showFeedbackPrompt: false });
-
-      // Reset feedback states
-      selectedRating = 0;
-      selectedThumb = null;
-      updateThumbUI();
-      updateStarsUI();
-
-      refreshState();
     });
   }
 

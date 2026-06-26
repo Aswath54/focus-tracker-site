@@ -810,3 +810,28 @@ input:focus {
   color: var(--primary-gold);
   filter: drop-shadow(0 0 4px var(--primary-gold-glow));
 }
+
+.feedback-comments-row {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+#feedback-comments {
+  width: 100%;
+  background-color: var(--bg-dark-3);
+  border: 1px solid var(--border-color);
+  color: var(--text-white);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  resize: none;
+  outline: none;
+  height: 60px;
+  transition: border-color var(--transition-speed);
+}
+
+#feedback-comments:focus {
+  border-color: var(--primary-gold);
+  box-shadow: 0 0 6px var(--primary-gold-alpha);
+}
