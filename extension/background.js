@@ -205,7 +205,7 @@ async function endFocusSession(notified = true) {
   if (notified) {
     chrome.notifications.create("focus-ended", {
       type: "basic",
-      iconUrl: "icon.svg",
+      iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       title: "Focus Session Completed! 🎉",
       message: "Excellent job staying focused! Your locked session has ended.",
       priority: 2
