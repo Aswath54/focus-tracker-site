@@ -1,4 +1,5 @@
 // AuraFocus Popup Logic (popup.js)
+const BACKEND_URL = "https://focus-tracker-site-production.up.railway.app"; // Update this with your Railway URL!
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Elements
@@ -641,13 +642,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Submit feedback
   if (btnSubmitFeedback) {
     btnSubmitFeedback.addEventListener("click", async () => {
+      const commentsText = feedbackComments ? feedbackComments.value.trim() : "";
+
       const feedback = {
         rating: selectedRating,
         thumb: selectedThumb,
-        comments: feedbackComments ? feedbackComments.value.trim() : "",
+        comments: commentsText,
         timestamp: Date.now()
       };
 
+      // 1. Submit to server database asynchronously (fails silently if offline/unconfigured)
+      try {
+        fetch(`${BACKEND_URL}/api/feedback`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(feedback)
+        }).catch(err => console.error("Failed to submit feedback to server:", err));
+      } catch (e) {
+        console.error("Feedback dispatch error:", e);
+      }
+
+      // 2. Save locally in extension storage
       const result = await chrome.storage.local.get("feedbackHistory");
       const history = result.feedbackHistory || [];
       history.push(feedback);

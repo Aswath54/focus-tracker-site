@@ -87,3 +87,23 @@ revealEls.forEach(el => {
     });
   });
 })();
+
+// Fetch and render live stats from the backend database
+(async function fetchLiveStats() {
+  try {
+    const response = await fetch("/api/stats");
+    if (response.ok) {
+      const data = await response.json();
+      
+      const downloadsEl = document.getElementById("stat-downloads");
+      const starsEl = document.getElementById("stat-stars");
+      const thumbsEl = document.getElementById("stat-thumbs");
+      
+      if (downloadsEl) downloadsEl.textContent = data.downloads.toLocaleString();
+      if (starsEl) starsEl.textContent = `${data.averageRating.toFixed(1)} ★`;
+      if (thumbsEl) thumbsEl.textContent = data.thumbsUp.toLocaleString();
+    }
+  } catch (e) {
+    console.error("Failed to load live stats:", e);
+  }
+})();

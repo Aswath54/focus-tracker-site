@@ -6,19 +6,44 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Support parsing JSON bodies
+app.use(express.json());
+
 // Serve static files (the landing page)
 app.use(express.static(path.join(__dirname, "public")));
 
 const EXTENSION_DIR = path.join(__dirname, "extension");
+const DB_FILE = path.join(__dirname, "database.json");
 
-// Download count tracker (in-memory for simplicity, resets on restart)
-let downloadCount = 0;
+// Helper to read the persistent database
+function readDB() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const data = fs.readFileSync(DB_FILE, "utf8");
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error("Error reading database file:", e);
+  }
+  return { downloads: 0, feedback: [] };
+}
+
+// Helper to write to the persistent database
+function writeDB(data) {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+  } catch (e) {
+    console.error("Error writing to database file:", e);
+  }
+}
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads
 app.get("/download", (req, res) => {
-  // Increment download tracker
-  downloadCount++;
-  console.log(`Download initiated. Total downloads: ${downloadCount}`);
+  // Increment download tracker persistently
+  const db = readDB();
+  db.downloads = (db.downloads || 0) + 1;
+  writeDB(db);
+  console.log(`Download initiated. Total downloads: ${db.downloads}`);
 
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", "attachment; filename=AuraFocus-Extension.zip");
@@ -44,9 +69,61 @@ app.get("/download", (req, res) => {
   archive.finalize();
 });
 
-// Stats API
+// Submit feedback from extension popup
+app.post("/api/feedback", (req, res) => {
+  const { rating, thumb, comments } = req.body || {};
+  
+  const cleanRating = parseInt(rating, 10) || 0;
+  const cleanThumb = (thumb === "up" || thumb === "down") ? thumb : null;
+  const cleanComments = typeof comments === "string" ? comments.trim() : "";
+
+  const db = readDB();
+  db.feedback = db.feedback || [];
+  
+  db.feedback.push({
+    rating: cleanRating,
+    thumb: cleanThumb,
+    comments: cleanComments,
+    timestamp: Date.now()
+  });
+
+  writeDB(db);
+  console.log(`Feedback received! Rating: ${cleanRating}, Thumb: ${cleanThumb}, Comment Length: ${cleanComments.length}`);
+  res.json({ success: true });
+});
+
+// Stats API — Returns dynamic downloads count, average star rating, and total thumbs up/down
 app.get("/api/stats", (req, res) => {
-  res.json({ downloads: downloadCount });
+  const db = readDB();
+  const downloads = db.downloads || 0;
+  const feedbackList = db.feedback || [];
+
+  let totalStars = 0;
+  let ratedCount = 0;
+  let thumbsUp = 0;
+  let thumbsDown = 0;
+
+  feedbackList.forEach(item => {
+    if (item.rating > 0) {
+      totalStars += item.rating;
+      ratedCount++;
+    }
+    if (item.thumb === "up") {
+      thumbsUp++;
+    } else if (item.thumb === "down") {
+      thumbsDown++;
+    }
+  });
+
+  const averageRating = ratedCount > 0 ? parseFloat((totalStars / ratedCount).toFixed(1)) : 5.0; // Default to 5.0 if no ratings yet
+
+  res.json({
+    downloads,
+    averageRating,
+    thumbsUp,
+    thumbsDown,
+    totalRatings: ratedCount
+  });
 });
 
 app.listen(PORT, () => {
