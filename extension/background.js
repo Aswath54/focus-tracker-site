@@ -210,6 +210,19 @@ async function endFocusSession(notified = true) {
       message: "Excellent job staying focused! Your locked session has ended.",
       priority: 2
     });
+
+    // Programmatically open popup.html in a standalone window to prompt for feedback
+    try {
+      chrome.windows.create({
+        url: "popup.html",
+        type: "popup",
+        width: 360,
+        height: 600,
+        focused: true
+      });
+    } catch (e) {
+      console.error("Failed to open feedback popup window:", e);
+    }
   }
 
   // Notify any open popup or blocked pages

@@ -671,6 +671,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       setTimeout(() => {
         feedbackSuccessMsg.style.display = "none";
+        window.close();
         refreshState();
       }, 1500);
     });
