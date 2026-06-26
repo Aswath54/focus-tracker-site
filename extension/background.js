@@ -214,7 +214,7 @@ async function endFocusSession(notified = true) {
     // Programmatically open popup.html in a standalone window to prompt for feedback
     try {
       chrome.windows.create({
-        url: "popup.html",
+        url: chrome.runtime.getURL("popup.html"),
         type: "popup",
         width: 360,
         height: 600,
