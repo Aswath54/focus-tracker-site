@@ -1,26 +1,59 @@
-require('dotenv').config();
+require("dotenv").config({ quiet: true });
 const express = require("express");
 const archiver = require("archiver");
 const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
-const { auth, requiresAuth } = require('express-openid-connect');
+const { auth, requiresAuth } = require("express-openid-connect");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Auth0 Configuration
-const config = {
-  authRequired: false,
-  auth0Logout: true,
+const authEnv = {
   secret: process.env.SECRET,
   baseURL: process.env.BASE_URL,
   clientID: process.env.CLIENT_ID,
-  issuerBaseURL: process.env.ISSUER_BASE_URL
+  issuerBaseURL: process.env.ISSUER_BASE_URL,
 };
+const authEnvKeys = Object.keys(authEnv);
+const hasFullAuthConfig = authEnvKeys.every((key) => Boolean(authEnv[key]));
+const hasPartialAuthConfig = authEnvKeys.some((key) => Boolean(authEnv[key])) && !hasFullAuthConfig;
 
-// auth router attaches /login, /logout, and /callback routes to the baseURL
-app.use(auth(config));
+if (hasFullAuthConfig) {
+  app.use(
+    auth({
+      authRequired: false,
+      auth0Logout: true,
+      ...authEnv,
+    })
+  );
+} else {
+  if (hasPartialAuthConfig) {
+    const missingKeys = authEnvKeys.filter((key) => !authEnv[key]);
+    console.warn(
+      `Auth disabled: missing required Auth0 env vars: ${missingKeys.join(", ")}`
+    );
+  } else {
+    console.warn("Auth disabled: no Auth0 env vars detected.");
+  }
+
+  app.use((req, res, next) => {
+    req.oidc = {
+      isAuthenticated: () => false,
+      user: null,
+      login: () => {
+        res.status(503).send("Authentication is not configured.");
+      },
+    };
+    next();
+  });
+}
+
+const requireAuthIfConfigured = hasFullAuthConfig
+  ? requiresAuth()
+  : (req, res, next) => {
+      res.status(503).json({ error: "Authentication is not configured." });
+    };
 
 // Support parsing JSON and URL-encoded bodies
 app.use(express.json());
@@ -73,7 +106,7 @@ app.get("/profile", (req, res) => {
 });
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads
-app.get("/download", requiresAuth(), (req, res) => {
+app.get("/download", requireAuthIfConfigured, (req, res) => {
   // Increment download tracker persistently
   const db = readDB();
   db.downloads = (db.downloads || 0) + 1;
@@ -105,7 +138,7 @@ app.get("/download", requiresAuth(), (req, res) => {
 });
 
 // Submit feedback from extension popup
-app.post("/api/feedback", requiresAuth(), (req, res) => {
+app.post("/api/feedback", requireAuthIfConfigured, (req, res) => {
   const { rating, thumb, comments } = req.body || {};
   
   const cleanRating = parseInt(rating, 10) || 0;
