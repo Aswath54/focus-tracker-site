@@ -1,30 +1,31 @@
+require('dotenv').config();
 const express = require("express");
 const archiver = require("archiver");
 const path = require("path");
 const fs = require("fs");
-const session = require("express-session");
-const passport = require("passport");
-const LocalStrategy = require("passport-local").Strategy;
-const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const bcrypt = require("bcryptjs");
+const { auth, requiresAuth } = require('express-openid-connect');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Auth0 Configuration
+console.log("DEBUG: Using CLIENT_ID:", process.env.CLIENT_ID);
+const config = {
+  authRequired: false,
+  auth0Logout: true,
+  secret: process.env.SECRET,
+  baseURL: process.env.BASE_URL,
+  clientID: process.env.CLIENT_ID,
+  issuerBaseURL: process.env.ISSUER_BASE_URL
+};
+
+// auth router attaches /login, /logout, and /callback routes to the baseURL
+app.use(auth(config));
+
 // Support parsing JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Express Session
-app.use(session({
-  secret: "secret-key-change-this", // TODO: Use environment variable in production
-  resave: false,
-  saveUninitialized: false
-}));
-
-// Passport Middleware
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Serve static files (the landing page)
 app.use(express.static(path.join(__dirname, "public")));
@@ -54,95 +55,13 @@ function writeDB(data) {
   }
 }
 
-// Passport configuration
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
-
-passport.deserializeUser((id, done) => {
-  const db = readDB();
-  const user = db.users.find(u => u.id === id);
-  done(null, user);
-});
-
-// Local Strategy
-passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
-  const db = readDB();
-  const user = db.users.find(u => u.email === email);
-  if (!user) return done(null, false, { message: 'Incorrect email.' });
-  
-  bcrypt.compare(password, user.password, (err, isMatch) => {
-    if (err) throw err;
-    if (isMatch) return done(null, user);
-    else return done(null, false, { message: 'Incorrect password.' });
-  });
-}));
-
-// Google Strategy (needs clientID/Secret setup later)
-passport.use(new GoogleStrategy({
-    clientID: "YOUR_GOOGLE_CLIENT_ID",
-    clientSecret: "YOUR_GOOGLE_CLIENT_SECRET",
-    callbackURL: "/auth/google/callback"
-  },
-  (accessToken, refreshToken, profile, done) => {
-    const db = readDB();
-    let user = db.users.find(u => u.googleId === profile.id);
-    if (!user) {
-      user = {
-        id: Date.now().toString(),
-        googleId: profile.id,
-        email: profile.emails[0].value,
-        name: profile.displayName
-      };
-      db.users.push(user);
-      writeDB(db);
-    }
-    return done(null, user);
-  }
-));
-
 // Authentication routes
-app.post("/register", (req, res) => {
-  const { email, password } = req.body;
-  const db = readDB();
-  if (db.users.find(u => u.email === email)) {
-    return res.status(400).json({ message: "User already exists." });
-  }
-
-  bcrypt.hash(password, 10, (err, hashedPassword) => {
-    if (err) throw err;
-    db.users.push({
-      id: Date.now().toString(),
-      email,
-      password: hashedPassword
-    });
-    writeDB(db);
-    res.json({ success: true });
-  });
-});
-
-app.post("/login", passport.authenticate("local"), (req, res) => {
-  res.json({ success: true, user: req.user });
-});
-
-app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-
-app.get("/auth/google/callback", 
-  passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
-    res.redirect("/");
-  }
-);
-
-app.get("/logout", (req, res) => {
-  req.logout((err) => {
-    if (err) return next(err);
-    res.redirect("/");
-  });
+app.get('/profile', requiresAuth(), (req, res) => {
+  res.send(JSON.stringify(req.oidc.user));
 });
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads
-app.get("/download", (req, res) => {
+app.get("/download", requiresAuth(), (req, res) => {
   // Increment download tracker persistently
   const db = readDB();
   db.downloads = (db.downloads || 0) + 1;
@@ -174,7 +93,7 @@ app.get("/download", (req, res) => {
 });
 
 // Submit feedback from extension popup
-app.post("/api/feedback", (req, res) => {
+app.post("/api/feedback", requiresAuth(), (req, res) => {
   const { rating, thumb, comments } = req.body || {};
   
   const cleanRating = parseInt(rating, 10) || 0;
