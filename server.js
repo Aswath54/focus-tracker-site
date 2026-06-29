@@ -13,6 +13,7 @@ const authEnv = {
   secret: process.env.SECRET,
   baseURL: process.env.BASE_URL,
   clientID: process.env.CLIENT_ID,
+  clientSecret: process.env.CLIENT_SECRET,
   issuerBaseURL: process.env.ISSUER_BASE_URL,
 };
 const authEnvKeys = Object.keys(authEnv);
