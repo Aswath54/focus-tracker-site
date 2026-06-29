@@ -10,7 +10,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Auth0 Configuration
-console.log("DEBUG: Using CLIENT_ID:", process.env.CLIENT_ID);
 const config = {
   authRequired: false,
   auth0Logout: true,
@@ -56,8 +55,21 @@ function writeDB(data) {
 }
 
 // Authentication routes
-app.get('/profile', requiresAuth(), (req, res) => {
-  res.send(JSON.stringify(req.oidc.user));
+app.get("/login/google", (req, res) => {
+  return res.oidc.login({
+    returnTo: "/",
+    authorizationParams: {
+      connection: "google-oauth2",
+    },
+  });
+});
+
+app.get("/profile", (req, res) => {
+  if (!req.oidc.isAuthenticated()) {
+    return res.status(401).json({ authenticated: false });
+  }
+
+  res.json(req.oidc.user);
 });
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads

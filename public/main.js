@@ -107,3 +107,29 @@ revealEls.forEach(el => {
     console.error("Failed to load live stats:", e);
   }
 })();
+
+// Render the authenticated user state in the nav.
+(async function renderAuthState() {
+  const authSection = document.getElementById("auth-section");
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  if (!authSection || !loginBtn || !logoutBtn) return;
+
+  try {
+    const response = await fetch("/profile");
+    if (!response.ok) return;
+
+    const user = await response.json();
+    const label = document.createElement("span");
+    label.textContent = `Hello, ${user.name || user.email || "friend"}`;
+    label.style.marginRight = "10px";
+    label.style.fontSize = "0.95rem";
+    label.style.opacity = "0.9";
+
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-flex";
+    authSection.prepend(label);
+  } catch (e) {
+    console.error("Failed to load auth state:", e);
+  }
+})();
