@@ -20,7 +20,10 @@
       <input id="email" name="email" type="email" class="admin-auth-input" autocomplete="username" required />
 
       <label class="admin-auth-label" for="password">Password</label>
-      <input id="password" name="password" type="password" class="admin-auth-input" autocomplete="current-password" required />
+      <div class="admin-password-row">
+        <input id="password" name="password" type="password" class="admin-auth-input" autocomplete="current-password" required />
+        <button class="admin-toggle-password" type="button" data-target="password">Show password</button>
+      </div>
 
       <button type="submit" class="btn btn-primary btn-large admin-auth-btn">Open Console</button>
       <p id="admin-login-error" class="admin-auth-error" aria-live="polite"></p>
@@ -30,6 +33,14 @@
   <script>
     const form = document.getElementById("admin-login-form");
     const errorEl = document.getElementById("admin-login-error");
+
+    document.querySelector(".admin-toggle-password").addEventListener("click", (event) => {
+      const button = event.currentTarget;
+      const input = document.getElementById(button.dataset.target);
+      const hidden = input.type === "password";
+      input.type = hidden ? "text" : "password";
+      button.textContent = hidden ? "Hide password" : "Show password";
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();

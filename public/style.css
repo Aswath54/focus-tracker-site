@@ -595,6 +595,18 @@ ul { list-style: none; }
   background: rgba(255,255,255,0.03);
   color: #fff;
 }
+.admin-password-row {
+  position: relative;
+}
+.admin-toggle-password {
+  margin-top: 8px;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 0.84rem;
+  cursor: pointer;
+  padding: 0;
+}
 .admin-auth-btn {
   justify-content: center;
   margin-top: 8px;
