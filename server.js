@@ -393,7 +393,7 @@ app.get("/download", requireAuthIfConfigured, (req, res) => {
 });
 
 // Submit feedback from extension popup
-app.post("/api/feedback", requireAuthIfConfigured, (req, res) => {
+app.post("/api/feedback", (req, res) => {
   const { rating, thumb, comments } = req.body || {};
   
   const cleanRating = parseInt(rating, 10) || 0;
