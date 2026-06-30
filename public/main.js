@@ -112,6 +112,7 @@ revealEls.forEach(el => {
 (async function renderAuthState() {
   const authSection = document.getElementById("auth-section");
   const loginBtn = document.getElementById("login-btn");
+  const signupBtn = document.getElementById("signup-btn");
   const logoutBtn = document.getElementById("logout-btn");
   if (!authSection || !loginBtn || !logoutBtn) return;
 
@@ -127,6 +128,7 @@ revealEls.forEach(el => {
     label.style.opacity = "0.9";
 
     loginBtn.style.display = "none";
+    if (signupBtn) signupBtn.style.display = "none";
     logoutBtn.style.display = "inline-flex";
     authSection.prepend(label);
   } catch (e) {

@@ -98,6 +98,15 @@ app.get("/login/google", (req, res) => {
   });
 });
 
+app.get("/signup", (req, res) => {
+  return res.oidc.login({
+    returnTo: "/",
+    authorizationParams: {
+      screen_hint: "signup",
+    },
+  });
+});
+
 app.get("/profile", (req, res) => {
   if (!req.oidc.isAuthenticated()) {
     return res.status(401).json({ authenticated: false });
