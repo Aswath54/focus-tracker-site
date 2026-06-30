@@ -205,9 +205,7 @@ app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
 app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
   const email = req.oidc && req.oidc.user ? req.oidc.user.email : "";
   if (!isRegisteredUser(email)) {
-    return res.oidc.logout({
-      returnTo: `${authEnv.baseURL}/login.html?error=signup-required`,
-    });
+    return res.redirect("/logout?returnTo=%2Flogin.html%3Ferror%3Dsignup-required");
   }
 
   res.redirect("/");
