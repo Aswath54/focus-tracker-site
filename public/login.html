@@ -162,6 +162,14 @@
       text-decoration: none;
     }
 
+    .admin-link {
+      display: inline-flex;
+      margin-top: 12px;
+      color: var(--accent);
+      font-size: 0.92rem;
+      text-decoration: none;
+    }
+
     .error,
     .success {
       margin: 0 0 18px;
@@ -235,6 +243,7 @@
     <div class="note">
       New here and prefer Google? <a href="/signup">Create an account with Google</a>.
     </div>
+    <a class="admin-link" href="/admin-login.html">Admin Login</a>
   </main>
   <script>
     const params = new URLSearchParams(window.location.search);
