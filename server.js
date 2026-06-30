@@ -14,6 +14,8 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
 
+app.set("trust proxy", 1);
+
 const authEnv = {
   secret: process.env.SECRET,
   baseURL: process.env.BASE_URL,
