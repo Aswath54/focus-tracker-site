@@ -139,10 +139,40 @@ function requireAdmin(req, res, next) {
   return res.redirect("/admin-login.html");
 }
 
+function normalizeEmail(email) {
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+function isRegisteredUser(email) {
+  const db = readDB();
+  const users = Array.isArray(db.users) ? db.users : [];
+  return users.some((user) => normalizeEmail(user.email) === normalizeEmail(email));
+}
+
+function registerUser(email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+
+  if (!db.users.some((user) => normalizeEmail(user.email) === normalizedEmail)) {
+    db.users.push({
+      email: normalizedEmail,
+      createdAt: Date.now(),
+    });
+    writeDB(db);
+  }
+
+  return true;
+}
+
 // Authentication routes
 app.get("/login/google", (req, res) => {
   return res.oidc.login({
-    returnTo: "/",
+    returnTo: "/auth/complete-login",
     authorizationParams: {
       connection: "google-oauth2",
     },
@@ -151,7 +181,7 @@ app.get("/login/google", (req, res) => {
 
 app.get("/signup", (req, res) => {
   return res.oidc.login({
-    returnTo: "/",
+    returnTo: "/auth/complete-signup",
     authorizationParams: {
       screen_hint: "signup",
     },
@@ -164,6 +194,23 @@ app.get("/profile", (req, res) => {
   }
 
   res.json(req.oidc.user);
+});
+
+app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
+  const email = req.oidc && req.oidc.user ? req.oidc.user.email : "";
+  registerUser(email);
+  res.redirect("/?signup=success");
+});
+
+app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
+  const email = req.oidc && req.oidc.user ? req.oidc.user.email : "";
+  if (!isRegisteredUser(email)) {
+    return res.oidc.logout({
+      returnTo: `${authEnv.baseURL}/login.html?error=signup-required`,
+    });
+  }
+
+  res.redirect("/");
 });
 
 app.post("/admin/login", async (req, res) => {

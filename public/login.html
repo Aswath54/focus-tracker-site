@@ -85,21 +85,38 @@
       color: var(--accent);
       text-decoration: none;
     }
+
+    .error {
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 113, 133, 0.4);
+      background: rgba(251, 113, 133, 0.12);
+      color: #fecdd3;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <main class="card">
     <h1>AuraFocus</h1>
     <p>Use your Google account to sign in through Auth0 and continue to the AuraFocus dashboard.</p>
+    <div id="login-error" class="error">That Google account has not signed up for AuraFocus yet. Create an account first.</div>
     <a class="google-btn" href="/login/google">
       <span>Continue with Google</span>
     </a>
     <div class="note">
-      New here? <a href="/signup">Create an account</a>.
+      New here? <a href="/signup">Create an account</a> first, then come back to log in.
     </div>
     <div class="note">
       If you land on Auth0 instead of Google, make sure the Google social connection is enabled in your Auth0 dashboard.
     </div>
   </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "signup-required") {
+      document.getElementById("login-error").style.display = "block";
+    }
+  </script>
 </body>
 </html>
