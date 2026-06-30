@@ -56,8 +56,16 @@ if (hasFullAuthConfig) {
 }
 
 const requireAuthIfConfigured = hasFullAuthConfig
-  ? requiresAuth()
+  ? (req, res, next) => {
+      if (req.session && req.session.localUser) {
+        return next();
+      }
+      return requiresAuth()(req, res, next);
+    }
   : (req, res, next) => {
+      if (req.session && req.session.localUser) {
+        return next();
+      }
       res.status(503).json({ error: "Authentication is not configured." });
     };
 
@@ -139,6 +147,22 @@ function requireAdmin(req, res, next) {
   return res.redirect("/admin-login.html");
 }
 
+function isAppAuthenticated(req) {
+  return (req.oidc && req.oidc.isAuthenticated && req.oidc.isAuthenticated()) || Boolean(req.session && req.session.localUser);
+}
+
+function buildProfile(req) {
+  if (req.session && req.session.localUser) {
+    return {
+      email: req.session.localUser.email,
+      name: req.session.localUser.name || req.session.localUser.email,
+      authProvider: "local",
+    };
+  }
+
+  return req.oidc && req.oidc.user ? { ...req.oidc.user, authProvider: "google" } : null;
+}
+
 function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
@@ -169,6 +193,40 @@ function registerUser(email) {
   return true;
 }
 
+function findUserByEmail(email) {
+  const db = readDB();
+  const users = Array.isArray(db.users) ? db.users : [];
+  return users.find((user) => normalizeEmail(user.email) === normalizeEmail(email)) || null;
+}
+
+function upsertLocalUser(email, password) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail || !password) {
+    return { ok: false, message: "Email and password are required." };
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const existingUser = db.users.find((user) => normalizeEmail(user.email) === normalizedEmail);
+  const passwordHash = bcrypt.hashSync(password, 10);
+
+  if (existingUser) {
+    existingUser.passwordHash = passwordHash;
+    existingUser.provider = existingUser.provider === "google" ? "hybrid" : "local";
+    existingUser.updatedAt = Date.now();
+  } else {
+    db.users.push({
+      email: normalizedEmail,
+      passwordHash,
+      provider: "local",
+      createdAt: Date.now(),
+    });
+  }
+
+  writeDB(db);
+  return { ok: true };
+}
+
 // Authentication routes
 app.get("/login/google", (req, res) => {
   return res.oidc.login({
@@ -189,11 +247,11 @@ app.get("/signup", (req, res) => {
 });
 
 app.get("/profile", (req, res) => {
-  if (!req.oidc.isAuthenticated()) {
+  if (!isAppAuthenticated(req)) {
     return res.status(401).json({ authenticated: false });
   }
 
-  res.json(req.oidc.user);
+  res.json(buildProfile(req));
 });
 
 app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
@@ -209,6 +267,46 @@ app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
   }
 
   res.redirect("/");
+});
+
+app.post("/auth/local/signup", (req, res) => {
+  const { email, password } = req.body || {};
+  const result = upsertLocalUser(email, password);
+  if (!result.ok) {
+    return res.status(400).json({ error: result.message });
+  }
+
+  req.session.localUser = {
+    email: normalizeEmail(email),
+    name: normalizeEmail(email),
+  };
+  return res.json({ success: true });
+});
+
+app.post("/auth/local/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  const user = findUserByEmail(email);
+  if (!user || !user.passwordHash) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  const isValid = await bcrypt.compare(typeof password === "string" ? password : "", user.passwordHash);
+  if (!isValid) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  req.session.localUser = {
+    email: normalizeEmail(user.email),
+    name: normalizeEmail(user.email),
+  };
+  return res.json({ success: true });
+});
+
+app.post("/auth/local/logout", (req, res) => {
+  if (req.session) {
+    delete req.session.localUser;
+  }
+  res.json({ success: true });
 });
 
 app.post("/admin/login", async (req, res) => {

@@ -140,6 +140,15 @@ async function renderLiveStats() {
     if (signupBtn) signupBtn.style.display = "none";
     logoutBtn.style.display = "inline-flex";
     authSection.prepend(label);
+
+    if (user.authProvider === "local") {
+      logoutBtn.href = "#";
+      logoutBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        await fetch("/auth/local/logout", { method: "POST" });
+        window.location.reload();
+      }, { once: true });
+    }
   } catch (e) {
     console.error("Failed to load auth state:", e);
   }
