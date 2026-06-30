@@ -9,8 +9,8 @@ const { auth, requiresAuth } = require("express-openid-connect");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_EMAIL = "aswath.ansh@gmail.com";
-const ADMIN_PASSWORD_HASH = "$2b$10$9oHOHKn04LlVy/IFh9psuuWijpjpTctTR4W2kxRADSbfmKz7gPpmi";
+const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL);
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
 
@@ -92,6 +92,10 @@ app.use(express.static(path.join(__dirname, "public")));
 const EXTENSION_DIR = path.join(__dirname, "extension");
 const DB_FILE = path.join(__dirname, "database.json");
 
+function normalizeEnv(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 // Helper to read the persistent database
 function readDB() {
   try {
@@ -145,6 +149,10 @@ function requireAdmin(req, res, next) {
     return next();
   }
   return res.redirect("/admin-login.html");
+}
+
+function isAdminConfigured() {
+  return Boolean(ADMIN_EMAIL && ADMIN_PASSWORD_HASH);
 }
 
 function isAppAuthenticated(req) {
@@ -310,6 +318,10 @@ app.post("/auth/local/logout", (req, res) => {
 });
 
 app.post("/admin/login", async (req, res) => {
+  if (!isAdminConfigured()) {
+    return res.status(503).json({ error: "Admin login is not configured." });
+  }
+
   const { email, password } = req.body || {};
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const candidatePassword = typeof password === "string" ? password : "";

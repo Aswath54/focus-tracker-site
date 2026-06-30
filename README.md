@@ -21,6 +21,11 @@ For Auth0 login to work, set these environment variables:
 - `CLIENT_SECRET`
 - `ISSUER_BASE_URL`
 
+For the admin console, also set:
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD_HASH`
+- `ADMIN_SESSION_SECRET` (recommended)
+
 ## Deploying on Railway
 1. Push this repo to GitHub
 2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub repo
@@ -28,6 +33,7 @@ For Auth0 login to work, set these environment variables:
 4. Done! Railway will give you a public URL.
 
 Set the same Auth0 environment variables in Railway, and make sure `BASE_URL` matches the deployed Railway URL.
+Set the admin variables in Railway too if you want `/admin-login.html` to work.
 
 ## Project Structure
 ```

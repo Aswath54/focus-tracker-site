@@ -13,7 +13,7 @@
   <main class="admin-auth-card">
     <div class="hero-badge">ADMIN ONLY</div>
     <h1 class="admin-auth-title">AuraFocus Console</h1>
-    <p class="admin-auth-copy">Sign in with the private admin account to review extension feedback.</p>
+    <p class="admin-auth-copy">Sign in with the private admin account to review extension feedback. Admin credentials are verified server-side.</p>
 
     <form id="admin-login-form" class="admin-auth-form">
       <label class="admin-auth-label" for="email">Email</label>
@@ -47,7 +47,8 @@
       });
 
       if (!response.ok) {
-        errorEl.textContent = "Invalid admin credentials.";
+        const data = await response.json().catch(() => ({ error: "Invalid admin credentials." }));
+        errorEl.textContent = data.error || "Invalid admin credentials.";
         return;
       }
 
