@@ -1,10 +1,10 @@
 # AuraFocus — Focus Tracker Website
 
-Landing page + download server for the [AuraFocus Chrome Extension](https://github.com/Aswath54/focus-tracker-extension).
+Landing page + download server for the [AuraFocus cross-platform Chromium extension](https://github.com/Aswath54/focus-tracker-extension).
 
 ## What This Does
 - Serves a beautiful landing page for the AuraFocus extension
-- Provides a `/download` endpoint that dynamically zips the extension files and serves them as a `.zip` download
+- Provides a `/download` endpoint that dynamically zips the extension files and serves them as a `.zip` download for Windows, Mac, Linux, and Chromebook users
 
 ## Running Locally
 ```bash
