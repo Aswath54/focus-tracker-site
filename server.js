@@ -9,7 +9,7 @@ const { auth, requiresAuth } = require("express-openid-connect");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL);
+const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
