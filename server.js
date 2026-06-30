@@ -146,6 +146,10 @@ function getFeedbackStats(feedbackList) {
   };
 }
 
+function normalizeFeedbackKey(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function requireAdmin(req, res, next) {
   if (req.session && req.session.isAdmin) {
     return next();
@@ -394,21 +398,44 @@ app.get("/download", requireAuthIfConfigured, (req, res) => {
 
 // Submit feedback from extension popup
 app.post("/api/feedback", (req, res) => {
-  const { rating, thumb, comments } = req.body || {};
+  const { rating, thumb, comments, feedbackKey } = req.body || {};
   
   const cleanRating = parseInt(rating, 10) || 0;
   const cleanThumb = (thumb === "up" || thumb === "down") ? thumb : null;
   const cleanComments = typeof comments === "string" ? comments.trim() : "";
+  const cleanFeedbackKey = normalizeFeedbackKey(feedbackKey);
 
   const db = readDB();
   db.feedback = db.feedback || [];
-  
-  db.feedback.push({
+
+  const nextEntry = {
     rating: cleanRating,
     thumb: cleanThumb,
     comments: cleanComments,
-    timestamp: Date.now()
-  });
+    timestamp: Date.now(),
+    feedbackKey: cleanFeedbackKey || null,
+  };
+
+  if (cleanFeedbackKey) {
+    const existingIndex = db.feedback.findIndex((item) => normalizeFeedbackKey(item.feedbackKey) === cleanFeedbackKey);
+    if (existingIndex >= 0) {
+      db.feedback[existingIndex] = {
+        ...db.feedback[existingIndex],
+        ...nextEntry,
+        firstSeenAt: db.feedback[existingIndex].firstSeenAt || db.feedback[existingIndex].timestamp || Date.now(),
+      };
+    } else {
+      db.feedback.push({
+        ...nextEntry,
+        firstSeenAt: Date.now(),
+      });
+    }
+  } else {
+    db.feedback.push({
+      ...nextEntry,
+      firstSeenAt: Date.now(),
+    });
+  }
 
   writeDB(db);
   console.log(`Feedback received! Rating: ${cleanRating}, Thumb: ${cleanThumb}, Comment Length: ${cleanComments.length}`);

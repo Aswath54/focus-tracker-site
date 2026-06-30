@@ -67,10 +67,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   let isWhitelistUnlocked = false; // Temp unlock for this popup instance
   let countdownInterval = null;
   let currentAllowedUrls = [];
+  let feedbackUserId = null;
 
   // Initialize view
   setupPasswordToggles();
   await refreshState();
+  feedbackUserId = await getOrCreateFeedbackUserId();
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
@@ -658,7 +660,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(feedback)
+          body: JSON.stringify({
+            ...feedback,
+            feedbackKey: feedbackUserId
+          })
         }).catch(err => console.error("Failed to submit feedback to server:", err));
       } catch (e) {
         console.error("Feedback dispatch error:", e);
@@ -701,4 +706,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       refreshState();
     }
   });
+
+  async function getOrCreateFeedbackUserId() {
+    const result = await chrome.storage.local.get("feedbackUserId");
+    if (result.feedbackUserId) {
+      return result.feedbackUserId;
+    }
+
+    const newId = `fb_${crypto.randomUUID()}`;
+    await chrome.storage.local.set({ feedbackUserId: newId });
+    return newId;
+  }
 });
