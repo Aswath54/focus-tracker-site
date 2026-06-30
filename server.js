@@ -4,10 +4,15 @@ const archiver = require("archiver");
 const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
+const session = require("express-session");
 const { auth, requiresAuth } = require("express-openid-connect");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_EMAIL = "aswath.ansh@gmail.com";
+const ADMIN_PASSWORD_HASH = "$2b$10$9oHOHKn04LlVy/IFh9psuuWijpjpTctTR4W2kxRADSbfmKz7gPpmi";
+const ADMIN_SESSION_SECRET =
+  process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
 
 const authEnv = {
   secret: process.env.SECRET,
@@ -59,6 +64,19 @@ const requireAuthIfConfigured = hasFullAuthConfig
 // Support parsing JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: ADMIN_SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 12,
+    },
+  })
+);
 
 // Serve static files (the landing page)
 app.use(express.static(path.join(__dirname, "public")));
@@ -88,6 +106,39 @@ function writeDB(data) {
   }
 }
 
+function getFeedbackStats(feedbackList) {
+  let totalStars = 0;
+  let ratedCount = 0;
+  let thumbsUp = 0;
+  let thumbsDown = 0;
+
+  feedbackList.forEach((item) => {
+    if (item.rating > 0) {
+      totalStars += item.rating;
+      ratedCount++;
+    }
+    if (item.thumb === "up") {
+      thumbsUp++;
+    } else if (item.thumb === "down") {
+      thumbsDown++;
+    }
+  });
+
+  return {
+    averageRating: ratedCount > 0 ? parseFloat((totalStars / ratedCount).toFixed(1)) : 5.0,
+    totalRatings: ratedCount,
+    thumbsUp,
+    thumbsDown,
+  };
+}
+
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+  return res.redirect("/admin-login.html");
+}
+
 // Authentication routes
 app.get("/login/google", (req, res) => {
   return res.oidc.login({
@@ -113,6 +164,43 @@ app.get("/profile", (req, res) => {
   }
 
   res.json(req.oidc.user);
+});
+
+app.post("/admin/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const candidatePassword = typeof password === "string" ? password : "";
+
+  const isPasswordValid = await bcrypt.compare(candidatePassword, ADMIN_PASSWORD_HASH);
+  if (normalizedEmail !== ADMIN_EMAIL || !isPasswordValid) {
+    return res.status(401).json({ error: "Invalid admin credentials." });
+  }
+
+  req.session.isAdmin = true;
+  req.session.adminEmail = ADMIN_EMAIL;
+  return res.json({ success: true });
+});
+
+app.post("/admin/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.json({ success: true });
+  });
+});
+
+app.get("/admin", requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/api/admin/feedback", requireAdmin, (req, res) => {
+  const db = readDB();
+  const feedback = (db.feedback || [])
+    .slice()
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+  res.json({
+    feedback,
+    stats: getFeedbackStats(feedback),
+  });
 });
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads
@@ -175,32 +263,14 @@ app.get("/api/stats", (req, res) => {
   const db = readDB();
   const downloads = db.downloads || 0;
   const feedbackList = db.feedback || [];
-
-  let totalStars = 0;
-  let ratedCount = 0;
-  let thumbsUp = 0;
-  let thumbsDown = 0;
-
-  feedbackList.forEach(item => {
-    if (item.rating > 0) {
-      totalStars += item.rating;
-      ratedCount++;
-    }
-    if (item.thumb === "up") {
-      thumbsUp++;
-    } else if (item.thumb === "down") {
-      thumbsDown++;
-    }
-  });
-
-  const averageRating = ratedCount > 0 ? parseFloat((totalStars / ratedCount).toFixed(1)) : 5.0; // Default to 5.0 if no ratings yet
+  const stats = getFeedbackStats(feedbackList);
 
   res.json({
     downloads,
-    averageRating,
-    thumbsUp,
-    thumbsDown,
-    totalRatings: ratedCount
+    averageRating: stats.averageRating,
+    thumbsUp: stats.thumbsUp,
+    thumbsDown: stats.thumbsDown,
+    totalRatings: stats.totalRatings
   });
 });
 

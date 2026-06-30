@@ -89,7 +89,7 @@ revealEls.forEach(el => {
 })();
 
 // Fetch and render live stats from the backend database
-(async function fetchLiveStats() {
+async function renderLiveStats() {
   try {
     const response = await fetch("/api/stats");
     if (response.ok) {
@@ -98,14 +98,23 @@ revealEls.forEach(el => {
       const downloadsEl = document.getElementById("stat-downloads");
       const starsEl = document.getElementById("stat-stars");
       const thumbsEl = document.getElementById("stat-thumbs");
+      const averagePillEl = document.getElementById("feedback-average-pill");
+      const thumbsPillEl = document.getElementById("feedback-thumbs-pill");
       
       if (downloadsEl) downloadsEl.textContent = data.downloads.toLocaleString();
       if (starsEl) starsEl.textContent = `${data.averageRating.toFixed(1)} ★`;
       if (thumbsEl) thumbsEl.textContent = data.thumbsUp.toLocaleString();
+      if (averagePillEl) averagePillEl.textContent = `${data.averageRating.toFixed(1)} stars`;
+      if (thumbsPillEl) thumbsPillEl.textContent = `${data.thumbsUp.toLocaleString()} thumbs up`;
     }
   } catch (e) {
     console.error("Failed to load live stats:", e);
   }
+}
+
+(function fetchLiveStats() {
+  renderLiveStats();
+  setInterval(renderLiveStats, 30000);
 })();
 
 // Render the authenticated user state in the nav.

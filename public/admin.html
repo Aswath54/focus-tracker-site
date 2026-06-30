@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuraFocus Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin-shell">
+  <main class="admin-console">
+    <header class="admin-header">
+      <div>
+        <div class="hero-badge">PRIVATE CONSOLE</div>
+        <h1 class="admin-title">Feedback Dashboard</h1>
+        <p class="admin-copy">Review ratings, thumbs, and written comments from AuraFocus users.</p>
+      </div>
+      <button id="admin-logout-btn" class="btn btn-ghost">Log Out</button>
+    </header>
+
+    <section class="admin-metrics">
+      <article class="admin-metric-card">
+        <span class="admin-metric-label">Average Stars</span>
+        <strong id="admin-average-rating" class="admin-metric-value">0.0</strong>
+      </article>
+      <article class="admin-metric-card">
+        <span class="admin-metric-label">Thumbs Up</span>
+        <strong id="admin-thumbs-up" class="admin-metric-value">0</strong>
+      </article>
+      <article class="admin-metric-card">
+        <span class="admin-metric-label">Thumbs Down</span>
+        <strong id="admin-thumbs-down" class="admin-metric-value">0</strong>
+      </article>
+      <article class="admin-metric-card">
+        <span class="admin-metric-label">Rated Entries</span>
+        <strong id="admin-total-ratings" class="admin-metric-value">0</strong>
+      </article>
+    </section>
+
+    <section class="admin-feedback-panel">
+      <div class="admin-panel-head">
+        <h2>Latest Feedback</h2>
+        <span id="admin-feedback-count" class="admin-panel-meta">0 entries</span>
+      </div>
+      <div id="admin-feedback-list" class="admin-feedback-list"></div>
+    </section>
+  </main>
+
+  <script>
+    const listEl = document.getElementById("admin-feedback-list");
+    const feedbackCountEl = document.getElementById("admin-feedback-count");
+    const averageEl = document.getElementById("admin-average-rating");
+    const thumbsUpEl = document.getElementById("admin-thumbs-up");
+    const thumbsDownEl = document.getElementById("admin-thumbs-down");
+    const totalRatingsEl = document.getElementById("admin-total-ratings");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function renderFeedback(feedback) {
+      if (!feedback.length) {
+        listEl.innerHTML = '<div class="admin-feedback-empty">No feedback submitted yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = feedback.map((item) => {
+        const submittedAt = item.timestamp ? new Date(item.timestamp).toLocaleString() : "Unknown time";
+        const rating = item.rating ? `${item.rating}/5 stars` : "No star rating";
+        const thumb = item.thumb === "up" ? "Thumbs up" : item.thumb === "down" ? "Thumbs down" : "No thumb vote";
+        const comment = item.comments ? escapeHtml(item.comments) : "No written comment.";
+
+        return `
+          <article class="admin-feedback-card">
+            <div class="admin-feedback-top">
+              <strong>${rating}</strong>
+              <span>${thumb}</span>
+            </div>
+            <p class="admin-feedback-comment">${comment}</p>
+            <time class="admin-feedback-time">${submittedAt}</time>
+          </article>
+        `;
+      }).join("");
+    }
+
+    async function loadFeedback() {
+      const response = await fetch("/api/admin/feedback");
+      if (response.status === 401 || response.redirected) {
+        window.location.href = "/admin-login.html";
+        return;
+      }
+
+      const data = await response.json();
+      averageEl.textContent = `${Number(data.stats.averageRating).toFixed(1)} ★`;
+      thumbsUpEl.textContent = Number(data.stats.thumbsUp).toLocaleString();
+      thumbsDownEl.textContent = Number(data.stats.thumbsDown).toLocaleString();
+      totalRatingsEl.textContent = Number(data.stats.totalRatings).toLocaleString();
+      feedbackCountEl.textContent = `${data.feedback.length} entries`;
+      renderFeedback(data.feedback);
+    }
+
+    document.getElementById("admin-logout-btn").addEventListener("click", async () => {
+      await fetch("/admin/logout", { method: "POST" });
+      window.location.href = "/admin-login.html";
+    });
+
+    loadFeedback().catch(() => {
+      listEl.innerHTML = '<div class="admin-feedback-empty">Failed to load feedback.</div>';
+    });
+  </script>
+</body>
+</html>

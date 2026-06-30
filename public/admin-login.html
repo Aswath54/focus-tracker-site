@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login - AuraFocus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin-shell">
+  <main class="admin-auth-card">
+    <div class="hero-badge">ADMIN ONLY</div>
+    <h1 class="admin-auth-title">AuraFocus Console</h1>
+    <p class="admin-auth-copy">Sign in with the private admin account to review extension feedback.</p>
+
+    <form id="admin-login-form" class="admin-auth-form">
+      <label class="admin-auth-label" for="email">Email</label>
+      <input id="email" name="email" type="email" class="admin-auth-input" autocomplete="username" required />
+
+      <label class="admin-auth-label" for="password">Password</label>
+      <input id="password" name="password" type="password" class="admin-auth-input" autocomplete="current-password" required />
+
+      <button type="submit" class="btn btn-primary btn-large admin-auth-btn">Open Console</button>
+      <p id="admin-login-error" class="admin-auth-error" aria-live="polite"></p>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById("admin-login-form");
+    const errorEl = document.getElementById("admin-login-error");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorEl.textContent = "";
+
+      const payload = {
+        email: form.email.value,
+        password: form.password.value,
+      };
+
+      const response = await fetch("/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        errorEl.textContent = "Invalid admin credentials.";
+        return;
+      }
+
+      window.location.href = "/admin";
+    });
+  </script>
+</body>
+</html>
