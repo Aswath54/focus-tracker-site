@@ -147,10 +147,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = isParentMode ? "block" : "none";
+        parentTimerPanel.style.display = "none";
       }
 
       // 1. Password Check
@@ -168,6 +168,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 2. Active Session Check
       const now = Date.now();
+      if (isParentMode) {
+        showSection(null);
+        if (secSetupPassword) secSetupPassword.style.display = "none";
+        if (secActiveSession) secActiveSession.style.display = "none";
+        if (secIdleSession) secIdleSession.style.display = "none";
+        if (secFeedback) secFeedback.style.display = "none";
+        if (secWhitelist) secWhitelist.style.display = "none";
+        if (secChangePassword) secChangePassword.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = "block";
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        updateStatus(false, "Parent");
+        return;
+      }
+
       if (state.isFocusActive && state.sessionEndTime > now) {
         showSection(secActiveSession);
         updateStatus(true, "Focusing");
@@ -293,8 +308,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function showSection(sectionToShow) {
-    [secSetupPassword, secActiveSession, secIdleSession, secFeedback].forEach(sec => {
-      sec.style.display = sec === sectionToShow ? "block" : "none";
+    [secSetupPassword, secActiveSession, secIdleSession, secFeedback].forEach((sec) => {
+      if (!sec) return;
+      sec.style.display = sectionToShow && sec === sectionToShow ? "block" : "none";
     });
   }
 
