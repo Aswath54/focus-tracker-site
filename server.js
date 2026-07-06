@@ -74,6 +74,15 @@ const requireAuthIfConfigured = hasFullAuthConfig
 // Support parsing JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(
   session({
     secret: ADMIN_SESSION_SECRET,
@@ -90,6 +99,10 @@ app.use(
 
 // Serve static files (the landing page)
 app.use(express.static(path.join(__dirname, "public")));
+
+app.get(["/", "/index.html", "/login.html", "/register.html"], (req, res) => {
+  res.redirect("/admin-login.html");
+});
 
 const EXTENSION_DIR = path.join(__dirname, "extension");
 const DB_FILE = path.join(__dirname, "database.json");
@@ -213,6 +226,68 @@ function findUserByEmail(email) {
   return users.find((user) => normalizeEmail(user.email) === normalizeEmail(email)) || null;
 }
 
+function findUserByToken(token) {
+  if (typeof token !== "string" || !token.trim()) {
+    return null;
+  }
+
+  const db = readDB();
+  const users = Array.isArray(db.users) ? db.users : [];
+  return users.find((user) => user.extensionToken === token.trim()) || null;
+}
+
+function createExtensionToken() {
+  return `af_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
+function getBearerToken(req) {
+  const header = req.get("authorization") || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+function sanitizeProgress(progress) {
+  const source = progress && typeof progress === "object" ? progress : {};
+  return {
+    allowedUrls: Array.isArray(source.allowedUrls)
+      ? source.allowedUrls.filter((item) => typeof item === "string").slice(0, 200)
+      : [],
+    whitelistHistory: Array.isArray(source.whitelistHistory)
+      ? source.whitelistHistory
+          .filter((item) => item && typeof item.domain === "string")
+          .slice(0, 50)
+          .map((item) => ({
+            domain: item.domain,
+            timestamp: Number(item.timestamp) || Date.now(),
+          }))
+      : [],
+    feedbackHistory: Array.isArray(source.feedbackHistory) ? source.feedbackHistory.slice(-100) : [],
+    lockPassword: typeof source.lockPassword === "string" ? source.lockPassword : "",
+    permanentFeedback:
+      source.permanentFeedback && typeof source.permanentFeedback === "object"
+        ? {
+            rating: Number(source.permanentFeedback.rating) || 0,
+            thumb:
+              source.permanentFeedback.thumb === "up" || source.permanentFeedback.thumb === "down"
+                ? source.permanentFeedback.thumb
+                : null,
+            comments: typeof source.permanentFeedback.comments === "string" ? source.permanentFeedback.comments : "",
+          }
+        : { rating: 0, thumb: null, comments: "" },
+    updatedAt: Date.now(),
+  };
+}
+
+function requireExtensionUser(req, res, next) {
+  const user = findUserByToken(getBearerToken(req));
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  req.extensionUser = user;
+  next();
+}
+
 function upsertLocalUser(email, password) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail || !password) {
@@ -243,44 +318,23 @@ function upsertLocalUser(email, password) {
 
 // Authentication routes
 app.get("/login/google", (req, res) => {
-  return res.oidc.login({
-    returnTo: "/auth/complete-login",
-    authorizationParams: {
-      connection: "google-oauth2",
-    },
-  });
+  return res.redirect("/admin-login.html");
 });
 
 app.get("/signup", (req, res) => {
-  return res.oidc.login({
-    returnTo: "/auth/complete-signup",
-    authorizationParams: {
-      screen_hint: "signup",
-    },
-  });
+  return res.redirect("/admin-login.html");
 });
 
 app.get("/profile", (req, res) => {
-  if (!isAppAuthenticated(req)) {
-    return res.status(401).json({ authenticated: false });
-  }
-
-  res.json(buildProfile(req));
+  return res.redirect("/admin-login.html");
 });
 
 app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
-  const email = req.oidc && req.oidc.user ? req.oidc.user.email : "";
-  registerUser(email);
-  res.redirect("/?signup=success");
+  return res.redirect("/admin-login.html");
 });
 
 app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
-  const email = req.oidc && req.oidc.user ? req.oidc.user.email : "";
-  if (!isRegisteredUser(email)) {
-    return res.redirect("/logout?returnTo=%2Flogin.html%3Ferror%3Dsignup-required");
-  }
-
-  res.redirect("/");
+  return res.redirect("/admin-login.html");
 });
 
 app.post("/auth/local/signup", (req, res) => {
@@ -314,6 +368,75 @@ app.post("/auth/local/login", async (req, res) => {
     name: normalizeEmail(user.email),
   };
   return res.json({ success: true });
+});
+
+app.post("/api/auth/signup", (req, res) => {
+  const { email, password } = req.body || {};
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail || typeof password !== "string" || password.length < 8) {
+    return res.status(400).json({ error: "Use a valid email and an 8+ character password." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  if (db.users.some((user) => normalizeEmail(user.email) === normalizedEmail)) {
+    return res.status(409).json({ error: "That email already has an account." });
+  }
+
+  const user = {
+    email: normalizedEmail,
+    passwordHash: bcrypt.hashSync(password, 10),
+    provider: "extension",
+    extensionToken: createExtensionToken(),
+    progress: sanitizeProgress({}),
+    createdAt: Date.now(),
+  };
+  db.users.push(user);
+  writeDB(db);
+
+  res.json({ token: user.extensionToken, user: { email: user.email }, progress: user.progress });
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body || {};
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => normalizeEmail(item.email) === normalizeEmail(email));
+  if (!user || !user.passwordHash) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  const isValid = await bcrypt.compare(typeof password === "string" ? password : "", user.passwordHash);
+  if (!isValid) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  user.extensionToken = user.extensionToken || createExtensionToken();
+  user.progress = sanitizeProgress(user.progress || {});
+  writeDB(db);
+
+  res.json({ token: user.extensionToken, user: { email: user.email }, progress: user.progress });
+});
+
+app.get("/api/auth/profile", requireExtensionUser, (req, res) => {
+  res.json({
+    user: { email: req.extensionUser.email },
+    progress: sanitizeProgress(req.extensionUser.progress || {}),
+  });
+});
+
+app.post("/api/progress", requireExtensionUser, (req, res) => {
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  user.progress = sanitizeProgress(req.body && req.body.progress);
+  user.updatedAt = Date.now();
+  writeDB(db);
+  res.json({ success: true, progress: user.progress });
 });
 
 app.post("/auth/local/logout", (req, res) => {
@@ -365,7 +488,7 @@ app.get("/api/admin/feedback", requireAdmin, (req, res) => {
 });
 
 // Download endpoint — dynamically zips the extension on request and tracks downloads
-app.get("/download", requireAuthIfConfigured, (req, res) => {
+app.get("/download", (req, res) => {
   // Increment download tracker persistently
   const db = readDB();
   db.downloads = (db.downloads || 0) + 1;
