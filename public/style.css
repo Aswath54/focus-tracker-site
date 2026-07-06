@@ -590,6 +590,7 @@ ul { list-style: none; }
 .admin-auth-input {
   width: 100%;
   padding: 14px 16px;
+  padding-right: 48px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.03);
@@ -599,13 +600,21 @@ ul { list-style: none; }
   position: relative;
 }
 .admin-toggle-password {
-  margin-top: 8px;
   background: transparent;
   border: none;
   color: var(--accent);
   font-size: 0.84rem;
   cursor: pointer;
   padding: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .password-eye {
