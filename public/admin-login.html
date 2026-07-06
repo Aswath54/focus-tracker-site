@@ -24,7 +24,11 @@
       <label class="admin-auth-label" for="password">Password</label>
       <div class="admin-password-row">
         <input id="password" name="password" type="password" class="admin-auth-input" autocomplete="current-password" required />
-        <button class="admin-toggle-password" type="button" data-target="password">Show password</button>
+        <button class="admin-toggle-password" type="button" data-target="password" aria-label="Show password" title="Show password">
+          <svg class="password-eye" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5c5.5 0 9.8 4.1 11 7-1.2 2.9-5.5 7-11 7S2.2 14.9 1 12c1.2-2.9 5.5-7 11-7zm0 3.2A3.8 3.8 0 1 0 12 16a3.8 3.8 0 0 0 0-7.6z" />
+          </svg>
+        </button>
       </div>
 
       <button type="submit" class="btn btn-primary btn-large admin-auth-btn">Open Console</button>
@@ -41,7 +45,8 @@
       const input = document.getElementById(button.dataset.target);
       const hidden = input.type === "password";
       input.type = hidden ? "text" : "password";
-      button.textContent = hidden ? "Hide password" : "Show password";
+      button.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+      button.title = hidden ? "Hide password" : "Show password";
     });
 
     form.addEventListener("submit", async (event) => {

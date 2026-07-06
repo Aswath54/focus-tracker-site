@@ -146,9 +146,23 @@
       background: transparent;
       border: none;
       color: var(--accent);
-      font-size: 0.84rem;
       cursor: pointer;
       padding: 0;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .password-eye {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .note {
@@ -219,7 +233,11 @@
           <label for="login-password">Password</label>
           <div class="password-row">
             <input id="login-password" name="password" type="password" autocomplete="current-password" required />
-            <button class="toggle-password" type="button" data-target="login-password">Show password</button>
+            <button class="toggle-password" type="button" data-target="login-password" aria-label="Show password" title="Show password">
+              <svg class="password-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5c5.5 0 9.8 4.1 11 7-1.2 2.9-5.5 7-11 7S2.2 14.9 1 12c1.2-2.9 5.5-7 11-7zm0 3.2A3.8 3.8 0 1 0 12 16a3.8 3.8 0 0 0 0-7.6z" />
+              </svg>
+            </button>
           </div>
           <button class="submit-btn" type="submit" style="margin-top: 14px;">Log In</button>
         </form>
@@ -233,7 +251,11 @@
           <label for="signup-password">Password</label>
           <div class="password-row">
             <input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required />
-            <button class="toggle-password" type="button" data-target="signup-password">Show password</button>
+            <button class="toggle-password" type="button" data-target="signup-password" aria-label="Show password" title="Show password">
+              <svg class="password-eye" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5c5.5 0 9.8 4.1 11 7-1.2 2.9-5.5 7-11 7S2.2 14.9 1 12c1.2-2.9 5.5-7 11-7zm0 3.2A3.8 3.8 0 1 0 12 16a3.8 3.8 0 0 0 0-7.6z" />
+              </svg>
+            </button>
           </div>
           <button class="submit-btn" type="submit" style="margin-top: 14px;">Sign Up</button>
         </form>
@@ -297,7 +319,8 @@
         const input = document.getElementById(button.dataset.target);
         const isHidden = input.type === "password";
         input.type = isHidden ? "text" : "password";
-        button.textContent = isHidden ? "Hide password" : "Show password";
+        button.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+        button.title = isHidden ? "Hide password" : "Show password";
       });
     });
   </script>
