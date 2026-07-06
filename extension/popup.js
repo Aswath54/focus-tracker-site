@@ -5,6 +5,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Elements
   const statusDot = document.getElementById("status-dot");
   const statusLabel = document.getElementById("status-label");
+  const accountForm = document.getElementById("account-form");
+  const accountEmail = document.getElementById("account-email");
+  const accountPassword = document.getElementById("account-password");
+  const accountStatusText = document.getElementById("account-status-text");
+  const accountError = document.getElementById("account-error");
+  const btnAccountSignup = document.getElementById("btn-account-signup");
+  const btnAccountLogout = document.getElementById("btn-account-logout");
+  const parentControlPanel = document.getElementById("parent-control-panel");
+  const childSyncPanel = document.getElementById("child-sync-panel");
+  const childSyncForm = document.getElementById("child-sync-form");
+  const childSyncPassword = document.getElementById("child-sync-password");
+  const childSyncError = document.getElementById("child-sync-error");
+  const childSyncSuccess = document.getElementById("child-sync-success");
+  const parentPasswordForm = document.getElementById("parent-password-form");
+  const parentPasswordInput = document.getElementById("parent-password");
+  const parentPasswordConfirm = document.getElementById("parent-password-confirm");
+  const parentPasswordError = document.getElementById("parent-password-error");
+  const parentPasswordSuccess = document.getElementById("parent-password-success");
   
   const secSetupPassword = document.getElementById("sec-setup-password");
   const secActiveSession = document.getElementById("sec-active-session");
@@ -16,6 +34,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const newPasswordInput = document.getElementById("new-password");
   const confirmPasswordInput = document.getElementById("confirm-password");
   const passwordSetupError = document.getElementById("password-setup-error");
+  const focusModeSelect = document.getElementById("focus-mode-select");
+  const focusModeHelp = document.getElementById("focus-mode-help");
   
   // Timer Elements
   const countdownText = document.getElementById("countdown-text");
@@ -23,6 +43,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const customMinutesInput = document.getElementById("custom-minutes");
   const btnSetCustom = document.getElementById("btn-set-custom");
   const btnStartFocus = document.getElementById("btn-start-focus");
+  const parentPresetBtns = document.querySelectorAll(".parent-preset-btn");
+  const parentCustomMinutesInput = document.getElementById("parent-custom-minutes");
+  const btnParentSetCustom = document.getElementById("btn-parent-set-custom");
+  const btnParentStartFocus = document.getElementById("btn-parent-start-focus");
   
   // Unlock Elements
   const unlockPasswordInput = document.getElementById("unlock-password-input");
@@ -61,6 +85,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const feedbackComments = document.getElementById("feedback-comments");
   const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
   const feedbackSuccessMsg = document.getElementById("feedback-success-msg");
+  const permThumbUp = document.getElementById("perm-btn-thumb-up");
+  const permThumbDown = document.getElementById("perm-btn-thumb-down");
+  const permStarBtns = document.querySelectorAll(".perm-star-btn");
+  const permFeedbackComments = document.getElementById("perm-feedback-comments");
+  const permFeedbackSuccess = document.getElementById("perm-feedback-success");
 
   // Local popup states
   let activeDurationSeconds = 1500; // Default 25m
@@ -68,11 +97,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   let countdownInterval = null;
   let currentAllowedUrls = [];
   let feedbackUserId = null;
+  let accountToken = null;
+  let accountUser = null;
+  let focusMode = "self";
+  let parentPassword = "";
+  let childSyncUnlocked = false;
+  let modeLocked = false;
+  let parentDurationSeconds = 1500;
+  let permanentFeedback = {
+    rating: 0,
+    thumb: null,
+    comments: ""
+  };
 
   // Initialize view
   setupPasswordToggles();
+  await loadAccount();
+  await loadPermanentFeedback();
   await refreshState();
   feedbackUserId = await getOrCreateFeedbackUserId();
+  bindPermanentFeedbackControls();
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
@@ -84,14 +128,37 @@ document.addEventListener("DOMContentLoaded", async () => {
       
       const state = response.state;
       currentAllowedUrls = state.allowedUrls;
+      focusMode = state.focusMode || focusMode;
+      modeLocked = !!state.modeLocked;
+      syncProgress();
+      const isChildMode = focusMode === "child";
+      const isParentMode = focusMode === "parent";
+      const showParentOnlyPanels = isParentMode;
       
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
-      secWhitelist.style.display = "block";
-      secChangePassword.style.display = state.hasPassword ? "block" : "none";
+      if (focusModeSelect) {
+        focusModeSelect.value = focusMode;
+        focusModeSelect.disabled = modeLocked;
+      }
+      secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
+      secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
+      if (parentControlPanel) {
+        parentControlPanel.style.display = isParentMode ? "block" : "none";
+      }
+      if (childSyncPanel) {
+        childSyncPanel.style.display = state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+      }
+      if (parentTimerPanel) {
+        parentTimerPanel.style.display = isParentMode ? "block" : "none";
+      }
 
       // 1. Password Check
       if (!state.hasPassword) {
+        if (focusModeSelect) {
+          focusModeSelect.value = focusMode;
+          updateFocusModeHelp();
+        }
         showSection(secSetupPassword);
         secWhitelist.style.display = "none"; // Hide whitelist during setup
         secChangePassword.style.display = "none";
@@ -125,8 +192,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           } else {
             showSection(secIdleSession);
             updateStatus(false, "Idle");
-            secWhitelist.style.display = "block"; // Restore whitelist
-            secChangePassword.style.display = "block";
+            secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block"; // Restore whitelist
+            secChangePassword.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
           }
         });
         stopLocalCountdown();
@@ -135,6 +202,93 @@ document.addEventListener("DOMContentLoaded", async () => {
         whitelistLockOverlay.style.display = "none";
         whitelistUnlockInputContainer.style.display = "none";
       }
+    });
+  }
+
+  function updateFocusModeHelp() {
+    if (!focusModeHelp || !focusModeSelect) return;
+
+    if (modeLocked) {
+      focusModeHelp.textContent = "Focus mode is locked after child sync on this device.";
+      return;
+    }
+
+    const helpByMode = {
+      self: "Self mode is for personal use and keeps the current behavior.",
+      parent: "Parent mode lets a parent manage the session password and controls.",
+      child: "Child mode is for the supervised user who enters the password set by the parent."
+    };
+
+    focusModeHelp.textContent = helpByMode[focusModeSelect.value] || helpByMode.self;
+  }
+
+  if (focusModeSelect) {
+    focusModeSelect.value = focusMode;
+    updateFocusModeHelp();
+    focusModeSelect.addEventListener("change", () => {
+      if (modeLocked) {
+        focusModeSelect.value = focusMode;
+        updateFocusModeHelp();
+        return;
+      }
+
+      focusMode = focusModeSelect.value;
+      updateFocusModeHelp();
+      chrome.runtime.sendMessage({
+        type: "SET_FOCUS_MODE",
+        focusMode
+      });
+      if (parentControlPanel) {
+        parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
+      }
+      if (childSyncPanel) {
+        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+      }
+      if (parentTimerPanel) {
+        parentTimerPanel.style.display = focusMode === "parent" ? "block" : "none";
+      }
+    });
+  }
+
+  if (childSyncForm) {
+    childSyncForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const enteredPassword = childSyncPassword ? childSyncPassword.value : "";
+
+      if (focusMode !== "child") {
+        showError(childSyncError, "Switch to child mode first.");
+        return;
+      }
+
+      if (!enteredPassword) {
+        showError(childSyncError, "Enter the parent password.");
+        return;
+      }
+
+      chrome.runtime.sendMessage({
+        type: "VERIFY_PARENT_PASSWORD",
+        parentPassword: enteredPassword
+      }, (response) => {
+        if (response && response.success) {
+          childSyncUnlocked = true;
+          modeLocked = false;
+          if (childSyncPassword) childSyncPassword.value = "";
+          childSyncError.style.display = "none";
+          if (childSyncSuccess) {
+            childSyncSuccess.style.display = "block";
+            setTimeout(() => childSyncSuccess.style.display = "none", 2500);
+          }
+          if (childSyncPanel) childSyncPanel.style.display = "none";
+          if (focusModeSelect) {
+            focusModeSelect.disabled = false;
+          }
+          chrome.storage.local.set({ modeLocked: false });
+          updateFocusModeHelp();
+          renderAccount();
+        } else {
+          showError(childSyncError, response.error || "Incorrect parent password.");
+        }
+      });
     });
   }
 
@@ -170,11 +324,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    chrome.runtime.sendMessage({ type: "SET_PASSWORD", password: newPass }, (response) => {
+    chrome.runtime.sendMessage({
+      type: "SET_PASSWORD",
+      password: newPass,
+      focusMode: focusModeSelect ? focusModeSelect.value : focusMode
+    }, (response) => {
       if (response && response.success) {
         newPasswordInput.value = "";
         confirmPasswordInput.value = "";
         passwordSetupError.style.display = "none";
+        syncProgress();
         refreshState();
       } else {
         showError(passwordSetupError, response.error || "Failed to set password.");
@@ -182,9 +341,83 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  if (parentPasswordForm) {
+    parentPasswordForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const parentPass = parentPasswordInput ? parentPasswordInput.value : "";
+      const confirmPass = parentPasswordConfirm ? parentPasswordConfirm.value : "";
+
+      if (focusMode !== "parent") {
+        showError(parentPasswordError, "Select parent mode first.");
+        return;
+      }
+
+      if (!accountToken) {
+        showError(parentPasswordError, "Log in before setting a parent password.");
+        return;
+      }
+
+      if (parentPass !== confirmPass) {
+        showError(parentPasswordError, "Parent passwords do not match.");
+        return;
+      }
+
+      if (parentPass.length < 4) {
+        showError(parentPasswordError, "Parent password must be at least 4 characters.");
+        return;
+      }
+
+      chrome.runtime.sendMessage({
+        type: "SET_PARENT_PASSWORD",
+        parentPassword: parentPass
+      }, (response) => {
+        if (response && response.success) {
+          parentPassword = parentPass;
+          if (parentPasswordInput) parentPasswordInput.value = "";
+          if (parentPasswordConfirm) parentPasswordConfirm.value = "";
+          parentPasswordError.style.display = "none";
+          if (parentPasswordSuccess) {
+            parentPasswordSuccess.style.display = "block";
+            setTimeout(() => parentPasswordSuccess.style.display = "none", 2500);
+          }
+        } else {
+          showError(parentPasswordError, response.error || "Failed to save parent password.");
+        }
+      });
+    });
+  }
+
   // --- TIMER PRESENTATION ---
+  parentPresetBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      parentPresetBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      parentDurationSeconds = parseInt(btn.dataset.seconds, 10);
+      if (parentCustomMinutesInput) {
+        parentCustomMinutesInput.value = Math.round(parentDurationSeconds / 60);
+      }
+    });
+  });
+
+  if (btnParentSetCustom) {
+    btnParentSetCustom.addEventListener("click", () => {
+      const mins = parseInt(parentCustomMinutesInput ? parentCustomMinutesInput.value : "25", 10);
+      if (isNaN(mins) || mins < 1) {
+        if (parentCustomMinutesInput) parentCustomMinutesInput.value = 1;
+        parentDurationSeconds = 60;
+      } else if (mins > 720) {
+        if (parentCustomMinutesInput) parentCustomMinutesInput.value = 720;
+        parentDurationSeconds = 720 * 60;
+      } else {
+        parentDurationSeconds = mins * 60;
+      }
+      parentPresetBtns.forEach(b => b.classList.remove("active"));
+    });
+  }
+
   presetBtns.forEach(btn => {
     btn.addEventListener("click", () => {
+      if (focusMode === "parent") return;
       presetBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activeDurationSeconds = parseInt(btn.dataset.seconds, 10);
@@ -195,6 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnSetCustom.addEventListener("click", () => {
+    if (focusMode === "parent") return;
     const mins = parseInt(customMinutesInput.value, 10);
     if (isNaN(mins) || mins < 1) {
       customMinutesInput.value = 1;
@@ -212,6 +446,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start focus session
   btnStartFocus.addEventListener("click", () => {
+    if (focusMode === "parent") return;
     chrome.runtime.sendMessage({
       type: "START_SESSION",
       durationSeconds: activeDurationSeconds,
@@ -225,8 +460,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  if (btnParentStartFocus) {
+    btnParentStartFocus.addEventListener("click", () => {
+      if (focusMode !== "parent") return;
+      chrome.runtime.sendMessage({
+        type: "START_SESSION",
+        durationSeconds: parentDurationSeconds,
+        allowedUrls: currentAllowedUrls
+      }, (response) => {
+        if (response && response.success) {
+          refreshState();
+        } else {
+          alert(response.error || "Could not start child session.");
+        }
+      });
+    });
+  }
+
   // Stop session (Unlock)
   btnUnlock.addEventListener("click", () => {
+    if (focusMode === "child") {
+      return;
+    }
     const password = unlockPasswordInput.value;
     if (!password) {
       showError(unlockError, "Password required.");
@@ -326,6 +581,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Add site
   btnAddSite.addEventListener("click", () => {
+    if (focusMode === "child") return;
     addWhitelistItem();
   });
 
@@ -336,6 +592,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   async function addWhitelistItem() {
+    if (focusMode === "child") return;
     let inputVal = newSiteInput.value.trim().toLowerCase();
     if (!inputVal) return;
 
@@ -360,12 +617,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function deleteWhitelistItem(index) {
+    if (focusMode === "child") return;
     const updatedUrls = [...currentAllowedUrls];
     updatedUrls.splice(index, 1);
     saveWhitelist(updatedUrls);
   }
 
   function saveWhitelist(updatedUrls) {
+    if (focusMode === "child") return;
     // If active and whitelisted is locked, we need the password, but we've already checked isWhitelistUnlocked in the popup.
     // So we pass the unlock password if we verified it, or nothing if idle.
     const password = isWhitelistUnlocked ? whitelistUnlockPassword.value : "";
@@ -386,6 +645,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         whitelistActionError.style.display = "none";
         currentAllowedUrls = updatedUrls;
         renderWhitelist(currentAllowedUrls);
+        syncProgress();
       } else {
         showError(whitelistActionError, response.error || "Failed to update whitelist.");
       }
@@ -552,6 +812,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Change Password Form Submission
   if (changePasswordForm) {
     changePasswordForm.addEventListener("submit", (e) => {
+      if (focusMode === "child") {
+        e.preventDefault();
+        return;
+      }
       e.preventDefault();
       const oldPass = changeOldPassword.value;
       const newPass = changeNewPassword.value;
@@ -583,6 +847,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             changePasswordSuccess.style.display = "none";
           }, 3000);
           
+          syncProgress();
           refreshState();
         } else {
           showError(changePasswordError, response.error || "Failed to change password.");
@@ -678,6 +943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         feedbackHistory: history, 
         showFeedbackPrompt: false 
       });
+      await syncProgress();
 
       // Show success feedback
       feedbackSuccessMsg.style.display = "block";
@@ -716,5 +982,266 @@ document.addEventListener("DOMContentLoaded", async () => {
     const newId = `fb_${crypto.randomUUID()}`;
     await chrome.storage.local.set({ feedbackUserId: newId });
     return newId;
+  }
+
+  async function loadAccount() {
+    const result = await chrome.storage.local.get(["accountToken", "accountUser"]);
+    accountToken = result.accountToken || null;
+    accountUser = result.accountUser || null;
+    renderAccount();
+
+    if (!accountToken) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${accountToken}` }
+      });
+      if (!response.ok) {
+        await clearAccount();
+        return;
+      }
+
+      const data = await response.json();
+      accountUser = data.user;
+      await chrome.storage.local.set({ accountUser });
+      renderAccount();
+    } catch (e) {
+      console.error("Could not refresh account profile:", e);
+    }
+  }
+
+  function renderAccount() {
+    if (!accountForm || !accountStatusText || !btnAccountLogout) return;
+
+    if (accountToken && accountUser) {
+      accountForm.style.display = "none";
+      btnAccountLogout.style.display = "inline-flex";
+      accountStatusText.textContent = `Signed in as ${accountUser.email}. Progress sync is on.`;
+    } else {
+      accountForm.style.display = "flex";
+      btnAccountLogout.style.display = "none";
+      accountStatusText.textContent = childSyncUnlocked
+        ? "Child sync unlocked. You can log in to restore progress on this device."
+        : "Log in to restore your progress on another browser.";
+    }
+  }
+
+  async function accountRequest(path, payload) {
+    const response = await fetch(`${BACKEND_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Account request failed.");
+    }
+    return data;
+  }
+
+  async function submitAccount(path) {
+    hideAccountError();
+    const email = accountEmail.value.trim();
+    const password = accountPassword.value;
+    if (!email || password.length < 8) {
+      showError(accountError, "Enter an email and an 8+ character password.");
+      return;
+    }
+
+    try {
+      const data = await accountRequest(path, { email, password });
+      accountToken = data.token;
+      accountUser = data.user;
+      await chrome.storage.local.set({ accountToken, accountUser });
+      await restoreProgress(data.progress);
+      if (data.progress && data.progress.modeLocked) {
+        modeLocked = true;
+      }
+      accountEmail.value = "";
+      accountPassword.value = "";
+      renderAccount();
+      await refreshState();
+      await syncProgress();
+    } catch (e) {
+      showError(accountError, e.message);
+    }
+  }
+
+  async function restoreProgress(progress) {
+    if (!progress) return;
+    await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "RESTORE_PROGRESS", progress }, (response) => {
+        if (!response || !response.success) {
+          showError(accountError, (response && response.error) || "Could not restore progress.");
+        }
+        resolve();
+      });
+    });
+  }
+
+  async function buildProgressPayload() {
+    const result = await chrome.storage.local.get([
+      "allowedUrls",
+      "whitelistHistory",
+      "feedbackHistory",
+      "password",
+      "parentPassword",
+      "focusMode",
+      "modeLocked",
+      "permanentFeedback"
+    ]);
+    return {
+      allowedUrls: result.allowedUrls || [],
+      whitelistHistory: result.whitelistHistory || [],
+      feedbackHistory: result.feedbackHistory || [],
+      lockPassword: result.password || "",
+      parentPassword: result.parentPassword || "",
+      focusMode: result.focusMode || "self",
+      modeLocked: !!result.modeLocked,
+      permanentFeedback: result.permanentFeedback || permanentFeedback
+    };
+  }
+
+  async function syncProgress() {
+    if (!accountToken) return;
+    try {
+      const progress = await buildProgressPayload();
+      await fetch(`${BACKEND_URL}/api/progress`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accountToken}`
+        },
+        body: JSON.stringify({ progress })
+      });
+    } catch (e) {
+      console.error("Progress sync failed:", e);
+    }
+  }
+
+  async function clearAccount() {
+    accountToken = null;
+    accountUser = null;
+    modeLocked = false;
+    if (focusModeSelect) {
+      focusModeSelect.disabled = false;
+    }
+    await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
+    renderAccount();
+  }
+
+  function hideAccountError() {
+    if (accountError) {
+      accountError.style.display = "none";
+    }
+  }
+
+  if (accountForm) {
+    accountForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitAccount("/api/auth/login");
+    });
+  }
+
+  if (btnAccountSignup) {
+    btnAccountSignup.addEventListener("click", () => {
+      submitAccount("/api/auth/signup");
+    });
+  }
+
+  if (btnAccountLogout) {
+    btnAccountLogout.addEventListener("click", clearAccount);
+  }
+
+  async function loadPermanentFeedback() {
+    const result = await chrome.storage.local.get("permanentFeedback");
+    permanentFeedback = {
+      rating: Number(result.permanentFeedback && result.permanentFeedback.rating) || 0,
+      thumb: result.permanentFeedback && (result.permanentFeedback.thumb === "up" || result.permanentFeedback.thumb === "down")
+        ? result.permanentFeedback.thumb
+        : null,
+      comments: typeof (result.permanentFeedback && result.permanentFeedback.comments) === "string"
+        ? result.permanentFeedback.comments
+        : ""
+    };
+    renderPermanentFeedback();
+  }
+
+  function bindPermanentFeedbackControls() {
+    if (permThumbUp) {
+      permThumbUp.addEventListener("click", () => {
+        permanentFeedback.thumb = permanentFeedback.thumb === "up" ? null : "up";
+        savePermanentFeedback();
+      });
+    }
+
+    if (permThumbDown) {
+      permThumbDown.addEventListener("click", () => {
+        permanentFeedback.thumb = permanentFeedback.thumb === "down" ? null : "down";
+        savePermanentFeedback();
+      });
+    }
+
+    permStarBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const rating = parseInt(btn.dataset.rating, 10);
+        permanentFeedback.rating = permanentFeedback.rating === rating ? 0 : rating;
+        savePermanentFeedback();
+      });
+    });
+
+    if (permFeedbackComments) {
+      permFeedbackComments.addEventListener("input", () => {
+        permanentFeedback.comments = permFeedbackComments.value;
+        savePermanentFeedback(true);
+      });
+    }
+  }
+
+  function renderPermanentFeedback() {
+    if (permFeedbackComments) {
+      permFeedbackComments.value = permanentFeedback.comments || "";
+    }
+
+    if (permThumbUp && permThumbDown) {
+      permThumbUp.classList.toggle("active-up", permanentFeedback.thumb === "up");
+      permThumbDown.classList.toggle("active-down", permanentFeedback.thumb === "down");
+    }
+
+    permStarBtns.forEach((btn) => {
+      const rating = parseInt(btn.dataset.rating, 10);
+      btn.classList.toggle("active", rating <= permanentFeedback.rating && permanentFeedback.rating > 0);
+    });
+  }
+
+  async function savePermanentFeedback(skipServer = false) {
+    renderPermanentFeedback();
+    await chrome.storage.local.set({ permanentFeedback });
+    await syncProgress();
+
+    if (!skipServer && accountToken) {
+      try {
+        await fetch(`${BACKEND_URL}/api/feedback`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            rating: permanentFeedback.rating,
+            thumb: permanentFeedback.thumb,
+            comments: permanentFeedback.comments || "",
+            feedbackKey: feedbackUserId
+          })
+        });
+        if (permFeedbackSuccess) {
+          permFeedbackSuccess.style.display = "block";
+          setTimeout(() => {
+            permFeedbackSuccess.style.display = "none";
+          }, 1500);
+        }
+      } catch (e) {
+        console.error("Failed to save permanent feedback:", e);
+      }
+    }
   }
 });
