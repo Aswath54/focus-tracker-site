@@ -293,7 +293,8 @@ async function handleMessages(request) {
     }
 
     else if (request.type === "SET_PARENT_PASSWORD") {
-      if (state.focusMode !== "parent") {
+      const requestedMode = request.focusMode || state.focusMode;
+      if (requestedMode !== "parent") {
         return { success: false, error: "Switch to parent mode before setting a parent password." };
       }
       if (typeof request.parentPassword !== "string" || request.parentPassword.length < 4) {

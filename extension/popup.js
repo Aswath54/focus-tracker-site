@@ -380,7 +380,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       chrome.runtime.sendMessage({
         type: "SET_PARENT_PASSWORD",
-        parentPassword: parentPass
+        parentPassword: parentPass,
+        focusMode
       }, (response) => {
         if (response && response.success) {
           parentPassword = parentPass;
