@@ -75,14 +75,22 @@ async function getExtensionState() {
     "isFocusActive",
     "sessionEndTime",
     "allowedUrls",
-    "password"
+    "password",
+    "parentPassword",
+    "focusMode",
+    "modeLocked",
+    "accountToken"
   ]);
 
   return {
     isFocusActive: result.isFocusActive || false,
     sessionEndTime: result.sessionEndTime || 0,
     allowedUrls: result.allowedUrls || [],
-    hasPassword: !!result.password
+    hasPassword: !!result.password,
+    hasParentPassword: !!result.parentPassword,
+    focusMode: result.focusMode || "self",
+    modeLocked: !!result.modeLocked,
+    hasAccount: !!result.accountToken
   };
 }
 
@@ -276,7 +284,29 @@ async function handleMessages(request) {
       if (state.hasPassword) {
         return { success: false, error: "Password is already configured." };
       }
-      await chrome.storage.local.set({ password: request.password });
+      await chrome.storage.local.set({
+        password: request.password,
+        focusMode: request.focusMode || "self"
+      });
+      return { success: true };
+    }
+
+    else if (request.type === "SET_PARENT_PASSWORD") {
+      if (state.focusMode !== "parent") {
+        return { success: false, error: "Switch to parent mode before setting a parent password." };
+      }
+      if (typeof request.parentPassword !== "string" || request.parentPassword.length < 4) {
+        return { success: false, error: "Parent password must be at least 4 characters." };
+      }
+      await chrome.storage.local.set({ parentPassword: request.parentPassword });
+      return { success: true };
+    }
+
+    else if (request.type === "VERIFY_PARENT_PASSWORD") {
+      const storage = await chrome.storage.local.get("parentPassword");
+      if (!storage.parentPassword || storage.parentPassword !== request.parentPassword) {
+        return { success: false, error: "Incorrect parent password." };
+      }
       return { success: true };
     }
     
@@ -320,8 +350,9 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "STOP_SESSION") {
-      const storage = await chrome.storage.local.get("password");
-      if (storage.password !== request.password) {
+      const storage = await chrome.storage.local.get(["password", "parentPassword", "focusMode"]);
+      const controlPassword = storage.focusMode === "parent" ? storage.parentPassword : storage.password;
+      if (!controlPassword || controlPassword !== request.password) {
         return { success: false, error: "Incorrect password. Stay focused!" };
       }
 
@@ -330,10 +361,15 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "UPDATE_WHITELIST") {
+      if (state.focusMode === "child" && state.isFocusActive && Date.now() < state.sessionEndTime) {
+        return { success: false, error: "Whitelist changes are disabled in child mode during an active session." };
+      }
+
       // If focus is active, we require the password to modify the whitelist
       if (state.isFocusActive && Date.now() < state.sessionEndTime) {
-        const storage = await chrome.storage.local.get("password");
-        if (storage.password !== request.password) {
+        const storage = await chrome.storage.local.get(["password", "parentPassword", "focusMode"]);
+        const controlPassword = storage.focusMode === "parent" ? storage.parentPassword : storage.password;
+        if (!controlPassword || controlPassword !== request.password) {
           return { success: false, error: "Incorrect password. Cannot modify blocklist during active session." };
         }
       }
@@ -346,6 +382,41 @@ async function handleMessages(request) {
         await redirectActiveBlockedTabs(request.allowedUrls);
       }
       
+      return { success: true };
+    }
+
+    else if (request.type === "SET_FOCUS_MODE") {
+      if (state.modeLocked) {
+        return { success: false, error: "Focus mode is locked after child sync and cannot be changed on this device." };
+      }
+
+      const nextMode = ["self", "parent", "child"].includes(request.focusMode)
+        ? request.focusMode
+        : "self";
+
+      await chrome.storage.local.set({ focusMode: nextMode });
+      return { success: true, focusMode: nextMode };
+    }
+
+    else if (request.type === "RESTORE_PROGRESS") {
+      if (state.isFocusActive && Date.now() < state.sessionEndTime) {
+        return { success: false, error: "Stop the active focus session before restoring synced progress." };
+      }
+
+      const progress = request.progress || {};
+      await chrome.storage.local.set({
+        allowedUrls: Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [],
+        whitelistHistory: Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [],
+        feedbackHistory: Array.isArray(progress.feedbackHistory) ? progress.feedbackHistory : [],
+        password: typeof progress.lockPassword === "string" ? progress.lockPassword : "",
+        parentPassword: typeof progress.parentPassword === "string" ? progress.parentPassword : "",
+        modeLocked: !!progress.modeLocked,
+        accountToken: typeof progress.accountToken === "string" ? progress.accountToken : "",
+        focusMode: ["self", "parent", "child"].includes(progress.focusMode) ? progress.focusMode : "self",
+        permanentFeedback: progress.permanentFeedback && typeof progress.permanentFeedback === "object"
+          ? progress.permanentFeedback
+          : { rating: 0, thumb: null, comments: "" }
+      });
       return { success: true };
     }
     
