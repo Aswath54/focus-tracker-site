@@ -294,7 +294,7 @@ async function handleMessages(request) {
 
     else if (request.type === "SET_PARENT_PASSWORD") {
       if (!state.hasAccount) {
-        return { success: false, error: "Log in to sync parent control across devices." };
+        return { success: false, error: "Your account session is missing. Log out and log back in to refresh it." };
       }
       if (state.focusMode !== "parent") {
         return { success: false, error: "Switch to parent mode before setting a parent password." };

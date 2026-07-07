@@ -1008,7 +1008,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { Authorization: `Bearer ${accountToken}` }
       });
       if (!response.ok) {
-        await clearAccount();
+        console.warn("Account profile refresh failed; keeping stored login until logout.");
         return;
       }
 
