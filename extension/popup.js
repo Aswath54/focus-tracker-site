@@ -1055,7 +1055,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const email = accountEmail.value.trim();
     const password = accountPassword.value;
     if (!email || password.length < 8) {
-      showError(accountError, "Enter a valid email and an 8+ character password.");
+      showError(accountError, "Enter a registered email and an 8+ character password.");
       return;
     }
 
