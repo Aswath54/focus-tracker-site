@@ -368,11 +368,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      if (!accountToken) {
-        showError(parentPasswordError, "Log in before setting a parent password.");
-        return;
-      }
-
       if (parentPass !== confirmPass) {
         showError(parentPasswordError, "Parent passwords do not match.");
         return;
