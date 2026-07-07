@@ -407,6 +407,7 @@ async function handleMessages(request) {
       }
 
       const progress = request.progress || {};
+      const existing = await chrome.storage.local.get(["accountToken"]);
       await chrome.storage.local.set({
         allowedUrls: Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [],
         whitelistHistory: Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [],
@@ -414,7 +415,11 @@ async function handleMessages(request) {
         password: typeof progress.lockPassword === "string" ? progress.lockPassword : "",
         parentPassword: typeof progress.parentPassword === "string" ? progress.parentPassword : "",
         modeLocked: !!progress.modeLocked,
-        accountToken: typeof progress.accountToken === "string" ? progress.accountToken : "",
+        accountToken: typeof progress.accountToken === "string"
+          ? progress.accountToken
+          : typeof existing.accountToken === "string"
+            ? existing.accountToken
+            : "",
         focusMode: ["self", "parent", "child"].includes(progress.focusMode) ? progress.focusMode : "self",
         permanentFeedback: progress.permanentFeedback && typeof progress.permanentFeedback === "object"
           ? progress.permanentFeedback
