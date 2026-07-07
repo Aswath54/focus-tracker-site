@@ -90,7 +90,7 @@ async function getExtensionState() {
     hasParentPassword: !!result.parentPassword,
     focusMode: result.focusMode || "self",
     modeLocked: !!result.modeLocked,
-    hasAccount: !!result.accountToken
+    hasAccount: !!(result.accountToken || result.accountUser)
   };
 }
 
