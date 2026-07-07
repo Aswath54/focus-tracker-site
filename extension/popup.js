@@ -1051,12 +1051,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     return data;
   }
 
+  function hasSupportedEmailDomain(email) {
+    const value = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const atIndex = value.lastIndexOf("@");
+    if (atIndex <= 0 || atIndex === value.length - 1) return false;
+
+    const domain = value.slice(atIndex + 1);
+    const allowedDomains = new Set([
+      "gmail.com",
+      "yahoo.com",
+      "outlook.com",
+      "hotmail.com",
+      "live.com",
+      "icloud.com",
+      "proton.me",
+      "protonmail.com",
+      "aol.com"
+    ]);
+
+    return allowedDomains.has(domain);
+  }
+
   async function submitAccount(path) {
     hideAccountError();
     const email = accountEmail.value.trim();
     const password = accountPassword.value;
     if (!email || password.length < 8) {
-      showError(accountError, "Enter a registered email and an 8+ character password.");
+      showError(accountError, "Enter a supported email and an 8+ character password.");
+      return;
+    }
+
+    if (!hasSupportedEmailDomain(email)) {
+      showError(accountError, "Use a Gmail, Yahoo, Outlook, iCloud, Proton, or AOL email address.");
       return;
     }
 
