@@ -293,10 +293,6 @@ async function handleMessages(request) {
     }
 
     else if (request.type === "SET_PARENT_PASSWORD") {
-      const hasRequestAccount = Boolean(request.accountToken || request.accountUser);
-      if (!state.hasAccount && !hasRequestAccount) {
-        return { success: false, error: "Your account session is missing. Log out and log back in to refresh it." };
-      }
       if (state.focusMode !== "parent") {
         return { success: false, error: "Switch to parent mode before setting a parent password." };
       }
