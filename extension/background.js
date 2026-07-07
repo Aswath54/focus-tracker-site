@@ -79,7 +79,8 @@ async function getExtensionState() {
     "parentPassword",
     "focusMode",
     "modeLocked",
-    "accountToken"
+    "accountToken",
+    "accountUser"
   ]);
 
   return {
