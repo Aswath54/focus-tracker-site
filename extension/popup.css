@@ -32,6 +32,7 @@ body {
   color: var(--text-normal);
   width: 380px;
   overflow-x: hidden;
+  overflow-y: auto;
   line-height: 1.4;
 }
 
@@ -40,9 +41,18 @@ body {
   flex-direction: column;
   background: var(--gradient-dark);
   min-height: 480px;
+  max-height: 620px;
   border: 1px solid var(--border-color);
-  padding: 20px;
+  padding: 16px;
   position: relative;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 /* Header */
@@ -116,15 +126,15 @@ body {
   background-color: var(--bg-dark-2);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 10px;
   position: relative;
   overflow: hidden;
 }
 
 .auth-card {
   text-align: center;
-  padding: 24px 20px;
+  padding: 18px 16px;
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -204,6 +214,7 @@ p.description {
   height: 16px;
 }
 
+input[type="email"],
 input[type="password"],
 input[type="text"],
 input[type="number"] {
@@ -216,6 +227,94 @@ input[type="number"] {
   font-family: var(--font-body);
   font-size: 13px;
   transition: border-color var(--transition-speed);
+}
+
+.account-card {
+  padding: 10px;
+}
+
+.mode-selector {
+  text-align: left;
+  margin: 8px 0 10px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mode-selector label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.mode-selector select {
+  width: 100%;
+  background-color: var(--bg-dark-3);
+  border: 1px solid var(--border-color);
+  color: var(--text-white);
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.mode-help {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+#sec-idle-session {
+  order: 2;
+}
+
+#sec-whitelist {
+  order: 4;
+}
+
+#sec-feedback {
+  order: 5;
+}
+
+.account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.account-header h3 {
+  font-size: 13px;
+  color: var(--text-white);
+  font-family: var(--font-heading);
+  margin-bottom: 4px;
+}
+
+.account-header p {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.account-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.permanent-feedback-card {
+  padding-bottom: 14px;
+}
+
+.permanent-feedback-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
 }
 
 input:focus {
@@ -327,7 +426,7 @@ input:focus {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 20px 0 30px 0;
+  margin: 14px 0 18px 0;
   position: relative;
 }
 
@@ -703,6 +802,18 @@ input:focus {
   padding: 4px;
 }
 
+.history-group-header {
+  list-style: none;
+  margin: 10px 0 4px;
+  padding: 8px 8px 4px;
+  font-family: var(--font-heading);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-gold);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .history-list .site-item {
   display: flex;
   justify-content: space-between;
@@ -795,8 +906,8 @@ input:focus {
 .star-btn {
   background: none;
   border: none;
-  color: var(--bg-dark-3);
-  text-shadow: 0 0 1px var(--border-color);
+  color: rgba(138, 153, 173, 0.45);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.08);
   font-size: 26px;
   cursor: pointer;
   transition: color var(--transition-speed), transform 0.15s ease;
@@ -816,7 +927,8 @@ input:focus {
   margin-bottom: 20px;
 }
 
-#feedback-comments {
+#feedback-comments,
+#perm-feedback-comments {
   width: 100%;
   background-color: var(--bg-dark-3);
   border: 1px solid var(--border-color);
@@ -827,11 +939,21 @@ input:focus {
   font-size: 12px;
   resize: none;
   outline: none;
-  height: 60px;
+  min-height: 60px;
+  max-height: 96px;
   transition: border-color var(--transition-speed);
 }
 
-#feedback-comments:focus {
+#feedback-comments:focus,
+#perm-feedback-comments:focus {
   border-color: var(--primary-gold);
   box-shadow: 0 0 6px var(--primary-gold-alpha);
+}
+
+.permanent-feedback-card .feedback-thumbs-row {
+  margin-bottom: 14px;
+}
+
+.permanent-feedback-card .feedback-stars-row {
+  margin-bottom: 16px;
 }
