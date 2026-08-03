@@ -744,6 +744,15 @@ ul { list-style: none; }
   margin-top: 12px;
 }
 
+.admin-console {
+  padding-bottom: 28px;
+}
+
+.admin-feedback-panel,
+.admin-metric-card {
+  overflow-wrap: anywhere;
+}
+
 /* ── Animations ── */
 @keyframes drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -903,7 +912,43 @@ ul { list-style: none; }
     flex-direction: column;
     align-items: stretch;
   }
+  .admin-header {
+    margin-bottom: 22px;
+  }
   .admin-metrics {
     grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .admin-shell {
+    padding: 20px 14px 32px;
+  }
+  .admin-auth-card {
+    margin-top: 20px;
+    padding: 26px 18px;
+  }
+  .admin-auth-btn,
+  .btn-large {
+    width: 100%;
+    justify-content: center;
+  }
+  .admin-auth-input {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-auth-card,
+  .admin-console {
+    width: 100%;
+  }
+  .admin-auth-title {
+    font-size: 28px;
+  }
+  .admin-feedback-panel {
+    padding: 18px;
+  }
+  .admin-panel-head h2 {
+    font-size: 22px;
   }
 }
