@@ -31,7 +31,7 @@ body {
   background-color: var(--bg-dark-1);
   color: var(--text-normal);
   width: 380px;
-  height: 620px;
+  min-height: 620px;
   overflow-x: hidden;
   overflow-y: auto;
   line-height: 1.4;
@@ -41,7 +41,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--gradient-dark);
-  height: 100%;
+  min-height: 620px;
   border: 1px solid var(--border-color);
   padding: 16px;
   position: relative;
@@ -132,7 +132,7 @@ body {
   padding: 12px;
   margin-bottom: 10px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .auth-card {
@@ -234,6 +234,7 @@ input[type="number"] {
 
 .account-card {
   padding: 10px;
+  overflow: visible;
 }
 
 .mode-selector {
