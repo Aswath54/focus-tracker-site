@@ -108,6 +108,21 @@ body {
   border-radius: 20px;
 }
 
+.build-marker {
+  flex: 0 0 auto;
+  font-family: var(--font-heading);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #111;
+  background: #ffd24a;
+  border: 1px solid #fff2b0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
