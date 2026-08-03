@@ -49,6 +49,22 @@ body {
   position: relative;
 }
 
+.parent-test-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary-gold);
+  background: var(--bg-dark-1);
+  z-index: 50;
+}
+
 .main-content {
   flex: 1;
   min-height: 0;

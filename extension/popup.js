@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const secActiveSession = document.getElementById("sec-active-session");
   const secIdleSession = document.getElementById("sec-idle-session");
   const secWhitelist = document.getElementById("sec-whitelist");
+  const parentTestView = document.getElementById("parent-test-view");
   
   // Password Setup Elements
   const passwordSetupForm = document.getElementById("password-setup-form");
@@ -154,6 +155,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
       const showParentOnlyPanels = isParentMode;
+
+      if (parentTestView) {
+        parentTestView.style.display = isParentMode ? "flex" : "none";
+      }
+      if (document.body) {
+        document.body.classList.toggle("parent-mode-active", isParentMode);
+      }
       
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
