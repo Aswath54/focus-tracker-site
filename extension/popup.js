@@ -131,14 +131,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     comments: ""
   };
 
-  function showParentTestOnly() {
-    const container = document.querySelector(".extension-container");
-    if (!container) return;
-
-    container.innerHTML = '<div class="parent-test-view">test</div>';
-    document.body.classList.add("parent-mode-active");
-  }
-
   // Initialize view
   setupPasswordToggles();
   await loadAccount();
@@ -169,10 +161,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (document.body) {
         document.body.classList.toggle("parent-mode-active", isParentMode);
-      }
-      if (isParentMode) {
-        showParentTestOnly();
-        return;
       }
       
       // Render Whitelist
@@ -293,10 +281,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         type: "SET_FOCUS_MODE",
         focusMode
       });
-      if (focusMode === "parent") {
-        showParentTestOnly();
-        return;
-      }
       if (parentControlPanel) {
         parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
       }

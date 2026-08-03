@@ -51,31 +51,6 @@ body {
 
 .parent-test-view {
   display: none;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
-  width: 100%;
-  font-family: var(--font-heading);
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--primary-gold);
-}
-
-body.parent-mode-active {
-  width: auto;
-  height: auto;
-  max-height: none;
-  overflow: hidden;
-}
-
-body.parent-mode-active .extension-container > :not(.parent-test-view) {
-  display: none !important;
-}
-
-body.parent-mode-active .parent-test-view {
-  display: flex !important;
 }
 
 .main-content {
