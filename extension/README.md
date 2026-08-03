@@ -41,3 +41,4 @@ To load and use this extension in your browser:
 * **Glassmorphism**: Built using modern CSS styling including `backdrop-filter: blur()`, radial breathing gradients, Orbitron fonts, and drop-shadow glow effects.
 * **Security Model**: The password is saved to local chrome storage. Any modification of the active session or edit of the whitelists checks the entered password against the storage key in the background script context to prevent front-end tampering.
 * **Persistent States**: Utilizes Manifest V3 `alarms` rather than simple JavaScript intervals in `background.js` since MV3 background workers sleep dynamically.
+* **Backend URL Config**: `popup.js` reads `backendUrl` from `chrome.storage.local` and falls back to the default Railway URL. Set this key if you move the service to another Railway account or domain.

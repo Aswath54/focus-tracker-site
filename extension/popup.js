@@ -1,7 +1,26 @@
 // AuraFocus Popup Logic (popup.js)
-const BACKEND_URL = "https://focus-tracker-site-production.up.railway.app"; // Update this with your Railway URL!
+const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production.up.railway.app";
+let BACKEND_URL = DEFAULT_BACKEND_URL;
+
+async function loadBackendUrl() {
+  try {
+    const result = await chrome.storage.local.get("backendUrl");
+    const stored = typeof result.backendUrl === "string" ? result.backendUrl.trim() : "";
+    if (stored) {
+      BACKEND_URL = stored.replace(/\/+$/, "");
+    }
+  } catch (e) {
+    console.warn("Could not read backend URL from storage; using default.", e);
+  }
+}
+
+function backendPath(path) {
+  return `${BACKEND_URL}${path}`;
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await loadBackendUrl();
+
   // Elements
   const statusDot = document.getElementById("status-dot");
   const statusLabel = document.getElementById("status-label");
@@ -933,7 +952,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // 1. Submit to server database asynchronously (fails silently if offline/unconfigured)
       try {
-        fetch(`${BACKEND_URL}/api/feedback`, {
+        fetch(backendPath("/api/feedback"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1006,7 +1025,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!accountToken) return;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+      const response = await fetch(backendPath("/api/auth/profile"), {
         headers: { Authorization: `Bearer ${accountToken}` }
       });
       if (!response.ok) {
@@ -1040,7 +1059,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function accountRequest(path, payload) {
-    const response = await fetch(`${BACKEND_URL}${path}`, {
+    const response = await fetch(backendPath(path), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -1145,7 +1164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!accountToken) return;
     try {
       const progress = await buildProgressPayload();
-      await fetch(`${BACKEND_URL}/api/progress`, {
+      await fetch(backendPath("/api/progress"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1259,7 +1278,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!skipServer && accountToken) {
       try {
-        await fetch(`${BACKEND_URL}/api/feedback`, {
+        await fetch(backendPath("/api/feedback"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
