@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnAccountLogout = document.getElementById("btn-account-logout");
   const parentControlPanel = document.getElementById("parent-control-panel");
   const childSyncPanel = document.getElementById("child-sync-panel");
+  const parentTimerPanel = document.getElementById("parent-timer-panel");
   const childSyncForm = document.getElementById("child-sync-form");
   const childSyncPassword = document.getElementById("child-sync-password");
   const childSyncError = document.getElementById("child-sync-error");
@@ -1202,7 +1203,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? result.permanentFeedback.comments
         : ""
     };
-    renderPermanentFeedback();
   }
 
   function bindPermanentFeedbackControls() {
