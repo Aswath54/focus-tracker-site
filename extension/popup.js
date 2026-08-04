@@ -128,7 +128,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let parentDurationSeconds = 1500;
-  let accountOnlyView = false;
   let permanentFeedback = {
     rating: 0,
     thumb: null,
@@ -156,7 +155,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
       childLinked = !!state.childLinked;
-      accountOnlyView = !accountToken && (focusMode === "parent" || focusMode === "child");
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
@@ -176,24 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         focusModeSelect.disabled = modeLocked;
       }
       if (accountModeNote) {
-        accountModeNote.style.display = accountOnlyView ? "none" : accountToken ? "none" : "block";
-      }
-      if (accountOnlyView) {
-        if (secSetupPassword) secSetupPassword.style.display = "none";
-        if (secActiveSession) secActiveSession.style.display = "none";
-        if (secIdleSession) secIdleSession.style.display = "none";
-        if (secFeedback) secFeedback.style.display = "none";
-        if (secWhitelist) secWhitelist.style.display = "none";
-        if (secChangePassword) secChangePassword.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = "none";
-        if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = "none";
-        showSection(null);
-        if (accountForm) accountForm.style.display = "flex";
-        if (btnAccountLogout) btnAccountLogout.style.display = "none";
-        updateStatus(false, "Account");
-        if (modeSelector) modeSelector.style.display = "block";
-        return;
+        accountModeNote.style.display = accountToken ? "none" : "block";
       }
 
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
@@ -203,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked && !!accountToken ? "block" : "none";
       }
       if (parentTimerPanel) {
         const showParentTimer = isParentMode && childLinked;
