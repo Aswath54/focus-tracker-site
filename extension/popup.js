@@ -179,7 +179,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountOnlyView ? "none" : accountToken ? "none" : "block";
       }
       if (accountOnlyView) {
-        if (modeSelector) modeSelector.style.display = "none";
         if (secSetupPassword) secSetupPassword.style.display = "none";
         if (secActiveSession) secActiveSession.style.display = "none";
         if (secIdleSession) secIdleSession.style.display = "none";
@@ -193,6 +192,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (accountForm) accountForm.style.display = "flex";
         if (btnAccountLogout) btnAccountLogout.style.display = "none";
         updateStatus(false, "Account");
+        if (modeSelector) modeSelector.style.display = "block";
         return;
       }
 
