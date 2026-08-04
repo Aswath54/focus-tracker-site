@@ -127,6 +127,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let parentDurationSeconds = 1500;
+  let accountOnlyView = false;
   let permanentFeedback = {
     rating: 0,
     thumb: null,
@@ -154,6 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
       childLinked = !!state.childLinked;
+      accountOnlyView = !accountToken && (focusMode === "parent" || focusMode === "child");
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
@@ -174,6 +176,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (accountModeNote) {
         accountModeNote.style.display = accountToken ? "none" : "block";
+      }
+      if (accountOnlyView) {
+        if (secSetupPassword) secSetupPassword.style.display = "none";
+        if (secActiveSession) secActiveSession.style.display = "none";
+        if (secIdleSession) secIdleSession.style.display = "none";
+        if (secFeedback) secFeedback.style.display = "none";
+        if (secWhitelist) secWhitelist.style.display = "none";
+        if (secChangePassword) secChangePassword.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = "none";
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        showSection(null);
+        if (accountForm) accountForm.style.display = "flex";
+        if (btnAccountLogout) btnAccountLogout.style.display = "none";
+        if (modeSelector) modeSelector.style.display = "block";
+        updateStatus(false, focusMode === "parent" ? "Parent" : "Child");
+        return;
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
