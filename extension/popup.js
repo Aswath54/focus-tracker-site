@@ -30,7 +30,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const accountStatusText = document.getElementById("account-status-text");
   const accountError = document.getElementById("account-error");
   const accountModeNote = document.getElementById("account-mode-note");
-  const modeSelector = document.querySelector(".mode-selector");
   const btnAccountSignup = document.getElementById("btn-account-signup");
   const btnAccountLogout = document.getElementById("btn-account-logout");
   const parentControlPanel = document.getElementById("parent-control-panel");
@@ -176,10 +175,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (accountModeNote) {
         accountModeNote.style.display = accountToken ? "none" : "block";
       }
-
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
-      if (modeSelector) modeSelector.style.display = "block";
       if (parentControlPanel) {
         parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
