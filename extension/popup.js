@@ -127,7 +127,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let parentDurationSeconds = 1500;
-  let accountModeRestricted = true;
   let permanentFeedback = {
     rating: 0,
     thumb: null,
@@ -155,7 +154,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
       childLinked = !!state.childLinked;
-      accountModeRestricted = !accountToken;
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
@@ -171,17 +169,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
       if (focusModeSelect) {
-        if (accountModeRestricted && focusMode !== "self") {
-          focusMode = "self";
-          focusModeSelect.value = "self";
-          chrome.runtime.sendMessage({ type: "SET_FOCUS_MODE", focusMode: "self" });
-        } else {
-          focusModeSelect.value = focusMode;
-        }
+        focusModeSelect.value = focusMode;
         focusModeSelect.disabled = modeLocked;
-        Array.from(focusModeSelect.options).forEach((option) => {
-          option.disabled = accountModeRestricted && option.value !== "self";
-        });
       }
       if (accountModeNote) {
         accountModeNote.style.display = accountToken ? "none" : "block";
@@ -189,13 +178,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && !accountModeRestricted ? "block" : "none";
+        parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode || accountModeRestricted ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && childLinked && !accountModeRestricted;
+        const showParentTimer = isParentMode && childLinked;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
 
@@ -222,9 +211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secFeedback) secFeedback.style.display = "none";
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = accountModeRestricted ? "none" : "block";
+        if (parentControlPanel) parentControlPanel.style.display = "block";
         if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = childLinked && !accountModeRestricted ? "block" : "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = childLinked ? "block" : "none";
         updateStatus(false, "Parent");
         return;
       }
@@ -293,13 +282,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      if (accountModeRestricted && focusModeSelect.value !== "self") {
-        focusModeSelect.value = "self";
-        updateFocusModeHelp();
-        showError(accountError, "Log in or sign up before using parent or child mode.");
-        return;
-      }
-
       focusMode = focusModeSelect.value;
       updateFocusModeHelp();
       chrome.runtime.sendMessage({
@@ -307,13 +289,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         focusMode
       });
       if (parentControlPanel) {
-        parentControlPanel.style.display = focusMode === "parent" && !accountModeRestricted ? "block" : "none";
+        parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked && !accountModeRestricted ? "block" : "none";
+        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" && childLinked && !accountModeRestricted ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && childLinked ? "block" : "none";
       }
     });
   }
@@ -327,11 +309,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         showError(childSyncError, "Switch to child mode first.");
         return;
       }
-      if (accountModeRestricted) {
-        showError(childSyncError, "Log in or sign up before using child mode.");
-        return;
-      }
-
       if (!enteredPassword) {
         showError(childSyncError, "Enter the parent password.");
         return;
@@ -426,11 +403,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         showError(parentPasswordError, "Select parent mode first.");
         return;
       }
-      if (accountModeRestricted) {
-        showError(parentPasswordError, "Log in or sign up before using parent mode.");
-        return;
-      }
-
       if (parentPass !== confirmPass) {
         showError(parentPasswordError, "Parent passwords do not match.");
         return;
@@ -465,10 +437,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- TIMER PRESENTATION ---
   parentPresetBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (accountModeRestricted) {
-        alert("Log in or sign up before using parent mode.");
-        return;
-      }
       parentPresetBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       parentDurationSeconds = parseInt(btn.dataset.seconds, 10);
@@ -480,10 +448,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (btnParentSetCustom) {
     btnParentSetCustom.addEventListener("click", () => {
-      if (accountModeRestricted) {
-        alert("Log in or sign up before using parent mode.");
-        return;
-      }
       const mins = parseInt(parentCustomMinutesInput ? parentCustomMinutesInput.value : "25", 10);
       if (isNaN(mins) || mins < 1) {
         if (parentCustomMinutesInput) parentCustomMinutesInput.value = 1;
@@ -546,10 +510,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnParentStartFocus) {
     btnParentStartFocus.addEventListener("click", () => {
       if (focusMode !== "parent") return;
-      if (accountModeRestricted) {
-        alert("Log in or sign up before using parent mode.");
-        return;
-      }
       if (!childLinked) {
         alert("Link a child first by completing child sync before starting a parent session.");
         return;
@@ -1250,16 +1210,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     accountToken = null;
     accountUser = null;
     modeLocked = false;
-    accountModeRestricted = true;
     if (focusModeSelect) {
       focusModeSelect.disabled = false;
-      Array.from(focusModeSelect.options).forEach((option) => {
-        option.disabled = option.value !== "self";
-      });
     }
     await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
-    focusMode = "self";
-    chrome.runtime.sendMessage({ type: "SET_FOCUS_MODE", focusMode: "self" });
     renderAccount();
     refreshState();
   }
