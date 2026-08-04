@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const accountStatusText = document.getElementById("account-status-text");
   const accountError = document.getElementById("account-error");
   const accountModeNote = document.getElementById("account-mode-note");
+  const modeSelector = document.querySelector(".mode-selector");
   const btnAccountSignup = document.getElementById("btn-account-signup");
   const btnAccountLogout = document.getElementById("btn-account-logout");
   const parentControlPanel = document.getElementById("parent-control-panel");
@@ -127,6 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let parentDurationSeconds = 1500;
+  let accountOnlyView = false;
   let permanentFeedback = {
     rating: 0,
     thumb: null,
@@ -154,6 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
       childLinked = !!state.childLinked;
+      accountOnlyView = !accountToken && (focusMode === "parent" || focusMode === "child");
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
@@ -173,10 +176,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         focusModeSelect.disabled = modeLocked;
       }
       if (accountModeNote) {
-        accountModeNote.style.display = accountToken ? "none" : "block";
+        accountModeNote.style.display = accountOnlyView ? "none" : accountToken ? "none" : "block";
       }
+      if (accountOnlyView) {
+        if (modeSelector) modeSelector.style.display = "none";
+        if (secSetupPassword) secSetupPassword.style.display = "none";
+        if (secActiveSession) secActiveSession.style.display = "none";
+        if (secIdleSession) secIdleSession.style.display = "none";
+        if (secFeedback) secFeedback.style.display = "none";
+        if (secWhitelist) secWhitelist.style.display = "none";
+        if (secChangePassword) secChangePassword.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = "none";
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        showSection(null);
+        if (accountForm) accountForm.style.display = "flex";
+        if (btnAccountLogout) btnAccountLogout.style.display = "none";
+        updateStatus(false, "Account");
+        return;
+      }
+
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
+      if (modeSelector) modeSelector.style.display = "block";
       if (parentControlPanel) {
         parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
