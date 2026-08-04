@@ -324,6 +324,9 @@ async function handleMessages(request) {
       if (!state.hasPassword) {
         return { success: false, error: "Please configure a lock password first." };
       }
+      if (!state.hasAccount && state.focusMode !== "self") {
+        return { success: false, error: "Log in or sign up before using parent or child mode." };
+      }
       if (state.focusMode === "parent" && !state.childLinked) {
         return { success: false, error: "Link a child first before starting a parent session." };
       }
@@ -392,6 +395,9 @@ async function handleMessages(request) {
     else if (request.type === "SET_FOCUS_MODE") {
       if (state.modeLocked) {
         return { success: false, error: "Focus mode is locked after child sync and cannot be changed on this device." };
+      }
+      if (!state.hasAccount && ["parent", "child"].includes(request.focusMode)) {
+        return { success: false, error: "Log in or sign up before using parent or child mode." };
       }
 
       const nextMode = ["self", "parent", "child"].includes(request.focusMode)
