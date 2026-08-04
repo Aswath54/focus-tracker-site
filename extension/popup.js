@@ -178,13 +178,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && !!accountToken ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked && !!accountToken ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && childLinked;
+        const showParentTimer = isParentMode && childLinked && !!accountToken;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
 
@@ -211,9 +211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secFeedback) secFeedback.style.display = "none";
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = "block";
+        if (parentControlPanel) parentControlPanel.style.display = accountToken ? "block" : "none";
         if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = childLinked ? "block" : "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = childLinked && !!accountToken ? "block" : "none";
         updateStatus(false, "Parent");
         return;
       }
