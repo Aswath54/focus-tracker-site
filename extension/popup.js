@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const secSetupPassword = document.getElementById("sec-setup-password");
   const secActiveSession = document.getElementById("sec-active-session");
   const secIdleSession = document.getElementById("sec-idle-session");
+  const secPermanentFeedback = document.getElementById("sec-permanent-feedback");
   const secWhitelist = document.getElementById("sec-whitelist");
   const parentTestView = document.getElementById("parent-test-view");
   
@@ -157,10 +158,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
+      const isAccountMode = isParentMode || isChildMode;
+      const hasSignedInAccount = !!(accountToken && accountUser);
+      const accountRequired = isAccountMode && !hasSignedInAccount;
       const showParentOnlyPanels = isParentMode;
 
       if (parentTestView) {
-        parentTestView.style.display = isParentMode ? "flex" : "none";
+        parentTestView.style.display = isParentMode && !accountRequired ? "flex" : "none";
       }
       if (document.body) {
         document.body.classList.toggle("parent-mode-active", isParentMode);
@@ -173,19 +177,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         focusModeSelect.disabled = modeLocked;
       }
       if (accountModeNote) {
-        accountModeNote.style.display = accountToken ? "none" : "block";
+        accountModeNote.style.display = accountRequired ? "block" : "none";
+      }
+      if (secPermanentFeedback) {
+        secPermanentFeedback.style.display = accountRequired ? "none" : "block";
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && !!accountToken ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked && !!accountToken ? "block" : "none";
+        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked && hasSignedInAccount ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && childLinked && !!accountToken;
+        const showParentTimer = isParentMode && childLinked && hasSignedInAccount;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
+      }
+
+      if (accountRequired) {
+        showSection(null);
+        if (secWhitelist) secWhitelist.style.display = "none";
+        if (secChangePassword) secChangePassword.style.display = "none";
+        if (secPermanentFeedback) secPermanentFeedback.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = "none";
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        stopLocalCountdown();
+        if (whitelistLockOverlay) whitelistLockOverlay.style.display = "none";
+        if (whitelistUnlockInputContainer) whitelistUnlockInputContainer.style.display = "none";
+        updateStatus(false, isParentMode ? "Parent" : "Child");
+        return;
       }
 
       // 1. Password Check
@@ -211,9 +233,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secFeedback) secFeedback.style.display = "none";
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = accountToken ? "block" : "none";
+        if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount ? "block" : "none";
         if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = childLinked && !!accountToken ? "block" : "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = childLinked && hasSignedInAccount ? "block" : "none";
         updateStatus(false, "Parent");
         return;
       }
@@ -287,7 +309,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       chrome.runtime.sendMessage({
         type: "SET_FOCUS_MODE",
         focusMode
+      }, () => {
+        refreshState();
       });
+      const accountRequired = (focusMode === "parent" || focusMode === "child") && !(accountToken && accountUser);
+      if (accountModeNote) {
+        accountModeNote.style.display = accountRequired ? "block" : "none";
+      }
+      if (secPermanentFeedback) {
+        secPermanentFeedback.style.display = accountRequired ? "none" : "block";
+      }
+      if (accountRequired) {
+        showSection(null);
+        if (secWhitelist) secWhitelist.style.display = "none";
+        if (secChangePassword) secChangePassword.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = "none";
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        stopLocalCountdown();
+        if (whitelistLockOverlay) whitelistLockOverlay.style.display = "none";
+        if (whitelistUnlockInputContainer) whitelistUnlockInputContainer.style.display = "none";
+        updateStatus(false, focusMode === "parent" ? "Parent" : "Child");
+        return;
+      }
       if (parentControlPanel) {
         parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
       }
