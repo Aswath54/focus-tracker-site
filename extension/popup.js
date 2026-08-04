@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let parentPassword = "";
   let childSyncUnlocked = false;
   let modeLocked = false;
+  let childLinked = false;
   let parentDurationSeconds = 1500;
   let permanentFeedback = {
     rating: 0,
@@ -151,6 +152,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentAllowedUrls = state.allowedUrls;
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
+      childLinked = !!state.childLinked;
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
@@ -178,7 +180,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = "none";
+        const showParentTimer = isParentMode && childLinked;
+        parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
 
       // 1. Password Check
@@ -206,7 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secChangePassword) secChangePassword.style.display = "none";
         if (parentControlPanel) parentControlPanel.style.display = "block";
         if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        if (parentTimerPanel) parentTimerPanel.style.display = childLinked ? "block" : "none";
         updateStatus(false, "Parent");
         return;
       }
@@ -288,7 +291,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && childLinked ? "block" : "none";
       }
     });
   }
@@ -315,6 +318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (response && response.success) {
           childSyncUnlocked = true;
           modeLocked = false;
+          childLinked = true;
           if (childSyncPassword) childSyncPassword.value = "";
           childSyncError.style.display = "none";
           if (childSyncSuccess) {
@@ -328,6 +332,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           chrome.storage.local.set({ modeLocked: false });
           updateFocusModeHelp();
           renderAccount();
+          refreshState();
         } else {
           showError(childSyncError, response.error || "Incorrect parent password.");
         }
@@ -503,6 +508,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnParentStartFocus) {
     btnParentStartFocus.addEventListener("click", () => {
       if (focusMode !== "parent") return;
+      if (!childLinked) {
+        alert("Link a child first by completing child sync before starting a parent session.");
+        return;
+      }
       chrome.runtime.sendMessage({
         type: "START_SESSION",
         durationSeconds: parentDurationSeconds,
@@ -1160,6 +1169,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "feedbackHistory",
       "password",
       "parentPassword",
+      "childLinked",
       "focusMode",
       "modeLocked",
       "permanentFeedback"
@@ -1170,6 +1180,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       feedbackHistory: result.feedbackHistory || [],
       lockPassword: result.password || "",
       parentPassword: result.parentPassword || "",
+      childLinked: !!result.childLinked,
       focusMode: result.focusMode || "self",
       modeLocked: !!result.modeLocked,
       permanentFeedback: result.permanentFeedback || permanentFeedback
