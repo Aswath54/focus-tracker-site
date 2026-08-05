@@ -145,6 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let parentDurationSeconds = 1500;
+  let hasSubmittedSessionFeedback = false;
   let permanentFeedback = {
     rating: 0,
     thumb: null,
@@ -154,6 +155,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize view
   setupPasswordToggles();
   await loadAccount();
+  await loadSessionFeedbackState();
   await loadPermanentFeedback();
   await refreshState();
   feedbackUserId = await getOrCreateFeedbackUserId();
@@ -197,7 +199,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || !hasSubmittedSessionFeedback ? "none" : "block";
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
@@ -1118,6 +1120,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         feedbackHistory: history, 
         showFeedbackPrompt: false 
       });
+      hasSubmittedSessionFeedback = true;
       await syncProgress();
 
       // Show success feedback
@@ -1157,6 +1160,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const newId = `fb_${crypto.randomUUID()}`;
     await chrome.storage.local.set({ feedbackUserId: newId });
     return newId;
+  }
+
+  async function loadSessionFeedbackState() {
+    const result = await chrome.storage.local.get("feedbackHistory");
+    hasSubmittedSessionFeedback = Array.isArray(result.feedbackHistory) && result.feedbackHistory.length > 0;
   }
 
   async function loadAccount() {
