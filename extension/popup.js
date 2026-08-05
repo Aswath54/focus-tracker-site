@@ -1271,6 +1271,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const serverMessage = data.error || data.message;
+      const normalizedServerMessage = typeof serverMessage === "string"
+        ? serverMessage.toLowerCase()
+        : "";
+      if (path === "/api/auth/login" && (
+        response.status === 404 ||
+        normalizedServerMessage.includes("application not found")
+      )) {
+        throw new Error("Email or password is incorrect.");
+      }
+
       if (serverMessage) {
         throw new Error(serverMessage);
       }
