@@ -338,7 +338,8 @@ async function handleMessages(request) {
       await chrome.storage.local.set({
         isFocusActive: true,
         sessionEndTime: endTime,
-        allowedUrls: allowedUrls
+        allowedUrls: allowedUrls,
+        showFeedbackPrompt: false
       });
 
       // Set alarm

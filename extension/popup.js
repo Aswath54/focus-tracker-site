@@ -125,6 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const feedbackComments = document.getElementById("feedback-comments");
   const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
   const feedbackSuccessMsg = document.getElementById("feedback-success-msg");
+  const feedbackError = document.getElementById("feedback-error");
   const permThumbUp = document.getElementById("perm-btn-thumb-up");
   const permThumbDown = document.getElementById("perm-btn-thumb-down");
   const permStarBtns = document.querySelectorAll(".perm-star-btn");
@@ -336,7 +337,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || !hasSubmittedSessionFeedback ? "none" : "block";
       }
       if (accountRequired) {
         showSection(null);
@@ -1087,6 +1088,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnSubmitFeedback) {
     btnSubmitFeedback.addEventListener("click", async () => {
       const commentsText = feedbackComments ? feedbackComments.value.trim() : "";
+
+      if (selectedRating === 0 && !selectedThumb && !commentsText) {
+        if (feedbackError) {
+          feedbackError.textContent = "Please rate the session, choose a thumb, or add a comment before submitting.";
+          feedbackError.style.display = "block";
+        }
+        return;
+      }
+      if (feedbackError) {
+        feedbackError.style.display = "none";
+      }
 
       const feedback = {
         rating: selectedRating,
