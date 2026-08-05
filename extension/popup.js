@@ -1,5 +1,5 @@
 // AuraFocus Popup Logic (popup.js)
-const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production.up.railway.app";
+const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
 const HISTORY_GROUPS = ["School", "Work", "Personal", "Other"];
 const HISTORY_GROUP_DOMAINS = {
   School: [
