@@ -213,6 +213,7 @@ async function endFocusSession(notified = true) {
     sessionEndTime: 0,
     activeSessionId: null,
     showFeedbackPrompt: true,
+    feedbackPromptDeferred: false,
     feedbackPromptSessionId
   });
   await chrome.alarms.clear("focusTimer");
@@ -347,6 +348,7 @@ async function handleMessages(request) {
         allowedUrls: allowedUrls,
         activeSessionId,
         showFeedbackPrompt: false,
+        feedbackPromptDeferred: false,
         feedbackPromptSessionId: null
       });
 

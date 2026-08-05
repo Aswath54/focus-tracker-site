@@ -1180,8 +1180,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (btnLaterFeedback) {
-    btnLaterFeedback.addEventListener("click", () => {
-      // Leave showFeedbackPrompt untouched so the prompt returns next time.
+    btnLaterFeedback.addEventListener("click", async () => {
+      // Snooze this prompt until the next focus session ends.
+      await chrome.storage.local.set({
+        showFeedbackPrompt: false,
+        feedbackPromptDeferred: true
+      });
       window.close();
     });
   }
