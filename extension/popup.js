@@ -851,10 +851,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     historyList.innerHTML = "";
 
     const result = await chrome.storage.local.get("whitelistHistory");
-    const history = result.whitelistHistory || [];
+    let history = result.whitelistHistory || [];
 
-    // Filter out currently active whitelisted domains
-    let filteredHistory = history.filter(item => !currentAllowedUrls.includes(item.domain));
+    // Backfill sites that were whitelisted before history tracking was added.
+    const knownDomains = new Set(history.map(item => item.domain));
+    const missingCurrentSites = currentAllowedUrls
+      .filter(domain => !knownDomains.has(domain))
+      .map(domain => ({
+        domain,
+        timestamp: Date.now(),
+        group: getHistoryGroup(domain)
+      }));
+
+    if (missingCurrentSites.length > 0) {
+      history = [...missingCurrentSites, ...history];
+      await chrome.storage.local.set({ whitelistHistory: history });
+    }
+
+    // Keep current and previously allowed sites visible in history.
+    let filteredHistory = history;
 
     // Filter by search text if any
     if (filterText) {
