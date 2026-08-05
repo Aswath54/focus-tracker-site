@@ -205,10 +205,15 @@ async function updateBlockingRules(allowedUrls) {
 
 // Clean up and end focus session
 async function endFocusSession(notified = true) {
+  const sessionResult = await chrome.storage.local.get("activeSessionId");
+  const feedbackPromptSessionId = sessionResult.activeSessionId || `session_${Date.now()}`;
+
   await chrome.storage.local.set({ 
     isFocusActive: false, 
     sessionEndTime: 0,
-    showFeedbackPrompt: true
+    activeSessionId: null,
+    showFeedbackPrompt: true,
+    feedbackPromptSessionId
   });
   await chrome.alarms.clear("focusTimer");
   await clearBlockingRules();
@@ -334,12 +339,15 @@ async function handleMessages(request) {
       const durationSec = request.durationSeconds;
       const endTime = Date.now() + durationSec * 1000;
       const allowedUrls = request.allowedUrls || [];
+      const activeSessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
       await chrome.storage.local.set({
         isFocusActive: true,
         sessionEndTime: endTime,
         allowedUrls: allowedUrls,
-        showFeedbackPrompt: false
+        activeSessionId,
+        showFeedbackPrompt: false,
+        feedbackPromptSessionId: null
       });
 
       // Set alarm

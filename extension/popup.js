@@ -276,17 +276,25 @@ document.addEventListener("DOMContentLoaded", async () => {
       } else {
         // Idle
         chrome.storage.local.get("showFeedbackPrompt", (res) => {
-          if (res.showFeedbackPrompt) {
-            showSection(secFeedback);
-            updateStatus(false, "Feedback");
-            secWhitelist.style.display = "none"; // Hide whitelist during feedback
-            secChangePassword.style.display = "none";
-          } else {
-            showSection(secIdleSession);
-            updateStatus(false, "Idle");
-            secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block"; // Restore whitelist
-            secChangePassword.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
-          }
+          chrome.storage.local.get("feedbackPromptSessionId", (promptState) => {
+            const hasCompletedSessionPrompt = res.showFeedbackPrompt && !!promptState.feedbackPromptSessionId;
+
+            if (hasCompletedSessionPrompt) {
+              showSection(secFeedback);
+              updateStatus(false, "Feedback");
+              secWhitelist.style.display = "none"; // Hide whitelist during feedback
+              secChangePassword.style.display = "none";
+            } else {
+              // Ignore stale prompt flags from before completed sessions were tracked.
+              if (res.showFeedbackPrompt) {
+                chrome.storage.local.set({ showFeedbackPrompt: false });
+              }
+              showSection(secIdleSession);
+              updateStatus(false, "Idle");
+              secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block"; // Restore whitelist
+              secChangePassword.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
+            }
+          });
         });
         stopLocalCountdown();
         
