@@ -1257,15 +1257,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function accountRequest(path, payload) {
-    const response = await fetch(backendPath(path), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    let response;
+    try {
+      response = await fetch(backendPath(path), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+    } catch (error) {
+      throw new Error("Could not reach the account server. Check your internet connection and try again.");
+    }
+
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(data.error || "Account request failed.");
+      const serverMessage = data.error || data.message;
+      if (serverMessage) {
+        throw new Error(serverMessage);
+      }
+
+      const statusMessage = response.statusText ? ` ${response.statusText}` : "";
+      throw new Error(`Account server error: ${response.status}${statusMessage}.`);
     }
+
     return data;
   }
 
