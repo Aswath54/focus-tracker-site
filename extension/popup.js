@@ -1254,12 +1254,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     accountToken = null;
     accountUser = null;
     modeLocked = false;
+    if (accountEmail) {
+      accountEmail.value = "";
+    }
+    if (accountPassword) {
+      accountPassword.value = "";
+    }
+    hideAccountError();
     if (focusModeSelect) {
       focusModeSelect.disabled = false;
     }
     await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
     renderAccount();
-    refreshState();
+    await refreshState();
   }
 
   function hideAccountError() {
