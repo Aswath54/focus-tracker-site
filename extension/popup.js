@@ -1,5 +1,22 @@
 // AuraFocus Popup Logic (popup.js)
 const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production.up.railway.app";
+const HISTORY_GROUPS = ["School", "Work", "Personal", "Other"];
+const HISTORY_GROUP_DOMAINS = {
+  School: [
+    "wikipedia.org", "khanacademy.org", "coursera.org", "edx.org", "quizlet.com",
+    "stackoverflow.com", "github.com", "w3schools.com", "canvas.instructure.com",
+    "classroom.google.com", "desmos.com", "geogebra.org", "ixl.com", "grammarly.com",
+    "turnitin.com", "jstor.org", "scholar.google.com"
+  ],
+  Work: [
+    "slack.com", "notion.so", "trello.com", "asana.com", "monday.com", "linear.app",
+    "figma.com", "dropbox.com", "docs.google.com", "sheets.google.com", "zoom.us"
+  ],
+  Personal: [
+    "youtube.com", "netflix.com", "spotify.com", "reddit.com", "instagram.com",
+    "facebook.com", "x.com", "tiktok.com", "amazon.com"
+  ]
+};
 let BACKEND_URL = DEFAULT_BACKEND_URL;
 
 async function loadBackendUrl() {
@@ -751,6 +768,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const historyList = document.getElementById("history-list");
   const historySearch = document.getElementById("history-search");
 
+  function getHistoryGroup(domain, savedGroup) {
+    if (HISTORY_GROUPS.includes(savedGroup)) return savedGroup;
+
+    const hostname = domain.toLowerCase().replace(/^www\./, "");
+    for (const group of ["School", "Work", "Personal"]) {
+      if (HISTORY_GROUP_DOMAINS[group].some(groupDomain =>
+        hostname === groupDomain || hostname.endsWith(`.${groupDomain}`)
+      )) {
+        return group;
+      }
+    }
+
+    return "Other";
+  }
+
   if (historySearch) {
     historySearch.addEventListener("input", (e) => {
       renderHistory(e.target.value.trim());
@@ -765,7 +797,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     history = history.filter(item => item.domain !== domain);
     
     // Unshift new entry
-    history.unshift({ domain: domain, timestamp: Date.now() });
+    history.unshift({
+      domain: domain,
+      timestamp: Date.now(),
+      group: getHistoryGroup(domain)
+    });
     
     // Limit to last 50 items
     if (history.length > 50) {
@@ -784,6 +820,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const updatedUrls = [...currentAllowedUrls, domain];
     saveWhitelist(updatedUrls);
     addToWhitelistHistory(domain); // Bring to the top of history
+  }
+
+  async function updateHistoryGroup(domain, group) {
+    if (!HISTORY_GROUPS.includes(group)) return;
+
+    const result = await chrome.storage.local.get("whitelistHistory");
+    const history = result.whitelistHistory || [];
+    const item = history.find(entry => entry.domain === domain);
+    if (!item) return;
+
+    item.group = group;
+    await chrome.storage.local.set({ whitelistHistory: history });
+    renderHistory(historySearch ? historySearch.value.trim() : "");
   }
 
   async function renderHistory(filterText = "") {
@@ -813,25 +862,56 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    filteredHistory.forEach(item => {
-      const li = document.createElement("li");
-      li.className = "site-item";
+    const groupedHistory = HISTORY_GROUPS.map(group => ({
+      group,
+      items: filteredHistory.filter(item => getHistoryGroup(item.domain, item.group) === group)
+    })).filter(section => section.items.length > 0);
 
-      const span = document.createElement("span");
-      span.className = "site-domain";
-      span.textContent = item.domain;
-      span.title = item.domain;
+    groupedHistory.forEach(({ group, items }) => {
+      const groupHeader = document.createElement("li");
+      groupHeader.className = "history-group-header";
+      groupHeader.textContent = group;
+      historyList.appendChild(groupHeader);
 
-      const addBtn = document.createElement("button");
-      addBtn.className = "btn-add-history";
-      addBtn.textContent = "Add";
-      addBtn.addEventListener("click", () => {
-        addSiteDirectly(item.domain);
+      items.forEach(item => {
+        const li = document.createElement("li");
+        li.className = "site-item";
+
+        const span = document.createElement("span");
+        span.className = "site-domain";
+        span.textContent = item.domain;
+        span.title = item.domain;
+
+        const actions = document.createElement("div");
+        actions.className = "history-item-actions";
+
+        const groupSelect = document.createElement("select");
+        groupSelect.className = "history-group-select";
+        groupSelect.setAttribute("aria-label", `Group for ${item.domain}`);
+        HISTORY_GROUPS.forEach(optionGroup => {
+          const option = document.createElement("option");
+          option.value = optionGroup;
+          option.textContent = optionGroup;
+          option.selected = optionGroup === getHistoryGroup(item.domain, item.group);
+          groupSelect.appendChild(option);
+        });
+        groupSelect.addEventListener("change", () => {
+          updateHistoryGroup(item.domain, groupSelect.value);
+        });
+
+        const addBtn = document.createElement("button");
+        addBtn.className = "btn-add-history";
+        addBtn.textContent = "Add";
+        addBtn.addEventListener("click", () => {
+          addSiteDirectly(item.domain);
+        });
+
+        actions.appendChild(groupSelect);
+        actions.appendChild(addBtn);
+        li.appendChild(span);
+        li.appendChild(actions);
+        historyList.appendChild(li);
       });
-
-      li.appendChild(span);
-      li.appendChild(addBtn);
-      historyList.appendChild(li);
     });
   }
 
