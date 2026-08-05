@@ -211,6 +211,7 @@ async function endFocusSession(notified = true) {
   await chrome.storage.local.set({ 
     isFocusActive: false, 
     sessionEndTime: 0,
+    allowedUrls: [],
     activeSessionId: null,
     showFeedbackPrompt: true,
     feedbackPromptDeferred: false,
