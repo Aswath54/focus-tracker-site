@@ -124,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const starBtns = document.querySelectorAll(".star-btn");
   const feedbackComments = document.getElementById("feedback-comments");
   const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
+  const btnLaterFeedback = document.getElementById("btn-later-feedback");
   const feedbackSuccessMsg = document.getElementById("feedback-success-msg");
   const feedbackError = document.getElementById("feedback-error");
   const permThumbUp = document.getElementById("perm-btn-thumb-up");
@@ -1175,6 +1176,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.close();
         refreshState();
       }, 1500);
+    });
+  }
+
+  if (btnLaterFeedback) {
+    btnLaterFeedback.addEventListener("click", () => {
+      // Leave showFeedbackPrompt untouched so the prompt returns next time.
+      window.close();
     });
   }
 
