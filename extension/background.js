@@ -533,6 +533,9 @@ async function handleMessages(request) {
       if (state.focusMode === "parent" && !state.childLinked) {
         return { success: false, error: "Link a child first before starting a parent session." };
       }
+      if (state.focusMode === "parent" && !state.hasParentPassword) {
+        return { success: false, error: "Set a parent password before starting a child session." };
+      }
       const durationSec = Number(request.durationSeconds);
       if (!Number.isFinite(durationSec) || durationSec < 60 || durationSec > 720 * 60) {
         return { success: false, error: "Choose a duration between 1 minute and 12 hours." };

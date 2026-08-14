@@ -162,6 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let accountUser = null;
   let focusMode = "self";
   let parentPassword = "";
+  let hasParentPassword = false;
   let childSyncUnlocked = false;
   let modeLocked = false;
   let childLinked = false;
@@ -194,6 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentAllowedUrls = state.allowedUrls;
       focusMode = state.focusMode || focusMode;
       modeLocked = !!state.modeLocked;
+      hasParentPassword = !!state.hasParentPassword;
       childSyncUnlocked = !!state.childSyncUnlocked;
       childLinked = !!state.childLinked;
       // Older builds stored only modeLocked, which could hide the sync form
@@ -383,16 +385,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateParentTimerControls() {
-    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked;
+    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked && hasParentPassword;
     if (parentLinkNote) {
-      parentLinkNote.style.display = canStartParentSession ? "none" : "block";
+      if (canStartParentSession) {
+        parentLinkNote.style.display = "none";
+      } else {
+        parentLinkNote.textContent = !childLinked
+          ? "Link a child first by completing child sync before starting a session."
+          : "Set a parent password before starting a child session.";
+        parentLinkNote.style.display = "block";
+      }
     }
     if (btnParentStartFocus) {
       btnParentStartFocus.disabled = !canStartParentSession;
       btnParentStartFocus.title = canStartParentSession
         ? "Start the child focus session"
-        : "Complete child sync before starting a session";
+        : !childLinked ? "Complete child sync before starting a session" : "Set a parent password before starting a session";
     }
+    parentPresetBtns.forEach((button) => {
+      button.disabled = !canStartParentSession;
+    });
+    if (parentCustomMinutesInput) parentCustomMinutesInput.disabled = !canStartParentSession;
+    if (btnParentSetCustom) btnParentSetCustom.disabled = !canStartParentSession;
   }
 
   if (focusModeSelect) {
@@ -568,6 +582,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }, async (response) => {
         if (response && response.success) {
           parentPassword = parentPass;
+          hasParentPassword = true;
+          updateParentTimerControls();
           const syncResult = await syncProgress();
           if (parentPasswordInput) parentPasswordInput.value = "";
           if (parentPasswordConfirm) parentPasswordConfirm.value = "";
