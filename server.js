@@ -641,6 +641,7 @@ app.post("/api/auth/google-login", async (req, res) => {
         auth0Subject: profile.sub,
         extensionToken: createExtensionToken(),
         progress: sanitizeProgress({}),
+        selfProgress: sanitizeProgress({}),
         createdAt: Date.now(),
       };
       db.users.push(user);
@@ -650,6 +651,7 @@ app.post("/api/auth/google-login", async (req, res) => {
       user.auth0Subject = profile.sub;
       user.extensionToken = user.extensionToken || createExtensionToken();
       user.progress = sanitizeProgress(user.progress || {});
+      user.selfProgress = sanitizeProgress(user.selfProgress || {});
       user.updatedAt = Date.now();
     }
 
@@ -658,10 +660,11 @@ app.post("/api/auth/google-login", async (req, res) => {
     clearPasswordResetFields(user);
     writeDB(db);
 
+    const loginMode = req.body && req.body.mode === "self" ? "self" : "account";
     return res.json({
       token: user.extensionToken,
       user: { email: user.email, name: profile.name || user.email },
-      progress: user.progress,
+      progress: loginMode === "self" ? user.selfProgress : user.progress,
     });
   } catch (error) {
     console.error("Google extension sign-in failed:", error.message);
@@ -759,9 +762,10 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.get("/api/auth/profile", requireExtensionUser, (req, res) => {
+  const mode = req.query.mode === "self" ? "self" : "account";
   res.json({
     user: { email: req.extensionUser.email },
-    progress: sanitizeProgress(req.extensionUser.progress || {}),
+    progress: sanitizeProgress(mode === "self" ? req.extensionUser.selfProgress || {} : req.extensionUser.progress || {}),
   });
 });
 
@@ -773,7 +777,19 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  user.progress = sanitizeProgress(req.body && req.body.progress);
+  const mode = req.body && req.body.mode === "self" ? "self" : "account";
+  const cleanProgress = sanitizeProgress(req.body && req.body.progress);
+  if (mode === "self") {
+    cleanProgress.lockPassword = "";
+    cleanProgress.parentPassword = "";
+    cleanProgress.parentEmail = "";
+    cleanProgress.childLinked = false;
+    cleanProgress.modeLocked = false;
+    cleanProgress.focusMode = "self";
+    user.selfProgress = cleanProgress;
+  } else {
+    user.progress = cleanProgress;
+  }
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
