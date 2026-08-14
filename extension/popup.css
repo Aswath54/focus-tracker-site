@@ -30,7 +30,7 @@ html {
   width: 380px;
   min-width: 380px;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
 }
 
 body {
@@ -41,7 +41,7 @@ body {
   min-width: 380px;
   height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
   line-height: 1.4;
 }
 
@@ -68,7 +68,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: visible;
+  overflow-y: auto;
   padding-right: 2px;
   padding-bottom: 12px;
   min-width: 0;
