@@ -236,7 +236,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
+        parentControlPanel.style.display = isParentMode ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
         if (secPermanentFeedback) secPermanentFeedback.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = "none";
+        if (parentControlPanel) parentControlPanel.style.display = isParentMode ? "block" : "none";
         if (childSyncPanel) childSyncPanel.style.display = "none";
         if (parentTimerPanel) parentTimerPanel.style.display = "none";
         stopLocalCountdown();
@@ -312,7 +312,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secFeedback) secFeedback.style.display = "none";
             if (secWhitelist) secWhitelist.style.display = "none";
             if (secChangePassword) secChangePassword.style.display = "none";
-            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount ? "block" : "none";
+            if (parentControlPanel) parentControlPanel.style.display = "block";
             if (childSyncPanel) childSyncPanel.style.display = "none";
             if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked ? "block" : "none";
             updateParentTimerControls();
