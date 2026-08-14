@@ -518,6 +518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             parentPasswordSuccess.style.display = "block";
             setTimeout(() => parentPasswordSuccess.style.display = "none", 2500);
           }
+          syncProgress();
         } else {
           showError(parentPasswordError, response.error || "Failed to save parent password.");
         }
