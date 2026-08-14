@@ -332,7 +332,11 @@ async function handleMessages(request) {
       if (storage.parentEmail && storage.parentEmail !== currentEmail) {
         return { success: false, error: "Log in with the parent account to unlock sync." };
       }
-      await chrome.storage.local.set({ childLinked: true, parentEmail: storage.parentEmail || currentEmail });
+      await chrome.storage.local.set({
+        childLinked: true,
+        modeLocked: true,
+        parentEmail: storage.parentEmail || currentEmail
+      });
       return { success: true };
     }
     
@@ -454,7 +458,6 @@ async function handleMessages(request) {
       const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
       const remoteWhitelistHistory = Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [];
       const remoteFeedbackHistory = Array.isArray(progress.feedbackHistory) ? progress.feedbackHistory : [];
-      const remoteFocusMode = ["self", "parent", "child"].includes(progress.focusMode) ? progress.focusMode : "self";
       const remotePermanentFeedback = progress.permanentFeedback && typeof progress.permanentFeedback === "object"
         ? progress.permanentFeedback
         : null;
@@ -471,8 +474,8 @@ async function handleMessages(request) {
         parentEmail: typeof progress.parentEmail === "string" && progress.parentEmail.trim()
           ? progress.parentEmail.trim().toLowerCase()
           : (existing.parentEmail || ""),
-        childLinked: typeof existing.childLinked === "boolean" ? existing.childLinked : !!progress.childLinked,
-        modeLocked: typeof existing.modeLocked === "boolean" ? existing.modeLocked : !!progress.modeLocked,
+        childLinked: !!existing.childLinked || !!progress.childLinked,
+        modeLocked: !!existing.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken
           : typeof existing.accountToken === "string"
@@ -480,7 +483,7 @@ async function handleMessages(request) {
             : "",
         focusMode: ["self", "parent", "child"].includes(existing.focusMode)
           ? existing.focusMode
-          : remoteFocusMode,
+          : "self",
         permanentFeedback: remotePermanentFeedback || existing.permanentFeedback || { rating: 0, thumb: null, comments: "" }
       });
       return { success: true };

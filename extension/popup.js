@@ -105,6 +105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentCustomMinutesInput = document.getElementById("parent-custom-minutes");
   const btnParentSetCustom = document.getElementById("btn-parent-set-custom");
   const btnParentStartFocus = document.getElementById("btn-parent-start-focus");
+  const parentLinkNote = document.getElementById("parent-link-note");
   
   // Unlock Elements
   const unlockPasswordInput = document.getElementById("unlock-password-input");
@@ -219,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired || !hasSubmittedSessionFeedback ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || isChildMode || !state.hasPassword ? "none" : "block";
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
@@ -227,12 +228,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode ? "none" : state.focusMode === "child" && !childSyncUnlocked && hasSignedInAccount ? "block" : "none";
+        childSyncPanel.style.display = isParentMode || modeLocked ? "none" : state.focusMode === "child" && !childSyncUnlocked && hasSignedInAccount ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && childLinked && hasSignedInAccount;
+        const showParentTimer = isParentMode && hasSignedInAccount;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
+      updateParentTimerControls();
 
       if (accountRequired) {
         showSection(null);
@@ -265,17 +267,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       // 2. Active Session Check
       const now = Date.now();
       if (isParentMode) {
-        showSection(null);
-        if (secSetupPassword) secSetupPassword.style.display = "none";
-        if (secActiveSession) secActiveSession.style.display = "none";
-        if (secIdleSession) secIdleSession.style.display = "none";
-        if (secFeedback) secFeedback.style.display = "none";
-        if (secWhitelist) secWhitelist.style.display = "none";
-        if (secChangePassword) secChangePassword.style.display = "none";
-        if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount ? "block" : "none";
-        if (childSyncPanel) childSyncPanel.style.display = "none";
-        if (parentTimerPanel) parentTimerPanel.style.display = childLinked && hasSignedInAccount ? "block" : "none";
-        updateStatus(false, "Parent");
+        chrome.storage.local.get(["showFeedbackPrompt", "feedbackPromptSessionId"], (feedbackState) => {
+          if (feedbackState.showFeedbackPrompt && feedbackState.feedbackPromptSessionId) {
+            showSection(secFeedback);
+            if (secWhitelist) secWhitelist.style.display = "none";
+            if (secChangePassword) secChangePassword.style.display = "none";
+            if (parentControlPanel) parentControlPanel.style.display = "none";
+            if (parentTimerPanel) parentTimerPanel.style.display = "none";
+            updateStatus(false, "Feedback");
+          } else {
+            showSection(null);
+            if (secSetupPassword) secSetupPassword.style.display = "none";
+            if (secActiveSession) secActiveSession.style.display = "none";
+            if (secIdleSession) secIdleSession.style.display = "none";
+            if (secFeedback) secFeedback.style.display = "none";
+            if (secWhitelist) secWhitelist.style.display = "none";
+            if (secChangePassword) secChangePassword.style.display = "none";
+            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount ? "block" : "none";
+            if (childSyncPanel) childSyncPanel.style.display = "none";
+            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount ? "block" : "none";
+            updateParentTimerControls();
+            updateStatus(false, "Parent");
+          }
+        });
         return;
       }
 
@@ -296,7 +310,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Idle
         chrome.storage.local.get("showFeedbackPrompt", (res) => {
           chrome.storage.local.get("feedbackPromptSessionId", (promptState) => {
-            const hasCompletedSessionPrompt = res.showFeedbackPrompt && !!promptState.feedbackPromptSessionId;
+            const hasCompletedSessionPrompt = res.showFeedbackPrompt && !!promptState.feedbackPromptSessionId && !isChildMode;
 
             if (hasCompletedSessionPrompt) {
               showSection(secFeedback);
@@ -341,6 +355,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     focusModeHelp.textContent = helpByMode[focusModeSelect.value] || helpByMode.self;
   }
 
+  function updateParentTimerControls() {
+    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked;
+    if (parentLinkNote) {
+      parentLinkNote.style.display = canStartParentSession ? "none" : "block";
+    }
+    if (btnParentStartFocus) {
+      btnParentStartFocus.disabled = !canStartParentSession;
+      btnParentStartFocus.title = canStartParentSession
+        ? "Start the child focus session"
+        : "Complete child sync before starting a session";
+    }
+  }
+
   if (focusModeSelect) {
     focusModeSelect.value = focusMode;
     updateFocusModeHelp();
@@ -364,7 +391,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired || !hasSubmittedSessionFeedback ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || focusMode === "child" || !state.hasPassword ? "none" : "block";
       }
       if (accountRequired) {
         showSection(null);
@@ -383,11 +410,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked && !modeLocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" && childLinked ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) ? "block" : "none";
       }
+      updateParentTimerControls();
     });
   }
 
@@ -408,10 +436,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       chrome.runtime.sendMessage({
         type: "VERIFY_PARENT_PASSWORD",
         parentPassword: enteredPassword
-      }, (response) => {
+      }, async (response) => {
         if (response && response.success) {
           childSyncUnlocked = true;
-          modeLocked = false;
+          modeLocked = true;
           childLinked = true;
           if (childSyncPassword) childSyncPassword.value = "";
           childSyncError.style.display = "none";
@@ -421,11 +449,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (childSyncPanel) childSyncPanel.style.display = "none";
           if (focusModeSelect) {
-            focusModeSelect.disabled = false;
+            focusModeSelect.disabled = true;
           }
-          chrome.storage.local.set({ modeLocked: false });
+          await chrome.storage.local.set({ modeLocked: true, childLinked: true });
           updateFocusModeHelp();
           renderAccount();
+          await syncProgress();
           refreshState();
         } else {
           showError(childSyncError, response.error || "Incorrect parent password.");
@@ -1160,12 +1189,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         fetch(backendPath("/api/feedback"), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: getFeedbackHeaders(),
           body: JSON.stringify({
             ...feedback,
-            feedbackKey: feedbackUserId
+            feedbackKey: getFeedbackKey()
           })
         }).catch(err => console.error("Failed to submit feedback to server:", err));
       } catch (e) {
@@ -1232,6 +1259,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const newId = `fb_${crypto.randomUUID()}`;
     await chrome.storage.local.set({ feedbackUserId: newId });
     return newId;
+  }
+
+  function getFeedbackKey() {
+    const email = typeof accountUser?.email === "string" ? accountUser.email.trim().toLowerCase() : "";
+    return email ? `account:${email}` : feedbackUserId;
+  }
+
+  function getFeedbackHeaders() {
+    return {
+      "Content-Type": "application/json",
+      ...(accountToken ? { Authorization: `Bearer ${accountToken}` } : {})
+    };
   }
 
   async function loadSessionFeedbackState() {
@@ -1592,14 +1631,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       try {
         await fetch(backendPath("/api/feedback"), {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: getFeedbackHeaders(),
           body: JSON.stringify({
             rating: permanentFeedback.rating,
             thumb: permanentFeedback.thumb,
             comments: permanentFeedback.comments || "",
-            feedbackKey: feedbackUserId
+            feedbackKey: getFeedbackKey()
           })
         });
         if (permFeedbackSuccess) {

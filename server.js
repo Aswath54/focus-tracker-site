@@ -833,7 +833,11 @@ app.post("/api/feedback", (req, res) => {
   const cleanRating = parseInt(rating, 10) || 0;
   const cleanThumb = (thumb === "up" || thumb === "down") ? thumb : null;
   const cleanComments = typeof comments === "string" ? comments.trim() : "";
-  const cleanFeedbackKey = normalizeFeedbackKey(feedbackKey);
+  const authenticatedUser = findUserByToken(getBearerToken(req));
+  const accountFeedbackKey = authenticatedUser
+    ? `account:${normalizeEmail(authenticatedUser.email)}`
+    : "";
+  const cleanFeedbackKey = accountFeedbackKey || normalizeFeedbackKey(feedbackKey);
 
   const db = readDB();
   db.feedback = db.feedback || [];
