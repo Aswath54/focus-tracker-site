@@ -48,6 +48,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const accountError = document.getElementById("account-error");
   const accountModeNote = document.getElementById("account-mode-note");
   const btnAccountSignup = document.getElementById("btn-account-signup");
+  const btnAccountForgot = document.getElementById("btn-account-forgot");
   const btnAccountLogout = document.getElementById("btn-account-logout");
   const parentControlPanel = document.getElementById("parent-control-panel");
   const childSyncPanel = document.getElementById("child-sync-panel");
@@ -1443,6 +1444,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnAccountSignup) {
     btnAccountSignup.addEventListener("click", () => {
       submitAccount("/api/auth/signup");
+    });
+  }
+
+  if (btnAccountForgot) {
+    btnAccountForgot.addEventListener("click", () => {
+      const email = accountEmail ? accountEmail.value.trim() : "";
+      const query = email ? `?email=${encodeURIComponent(email)}` : "";
+      chrome.tabs.create({ url: backendPath(`/forgot-password.html${query}`) });
     });
   }
 

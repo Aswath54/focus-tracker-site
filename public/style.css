@@ -654,6 +654,26 @@ ul { list-style: none; }
   color: #ff8e8e;
   font-size: 13px;
 }
+.auth-success {
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid rgba(57, 255, 20, 0.28);
+  border-radius: 12px;
+  background: rgba(57, 255, 20, 0.08);
+  color: #b9ffab;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.auth-back-link {
+  display: inline-flex;
+  margin-top: 22px;
+  color: var(--gold);
+  font-size: 13px;
+  text-decoration: none;
+}
+.auth-back-link:hover {
+  text-decoration: underline;
+}
 .admin-header {
   display: flex;
   justify-content: space-between;

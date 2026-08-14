@@ -26,6 +26,17 @@ For the admin console, also set:
 - `ADMIN_PASSWORD_HASH`
 - `ADMIN_SESSION_SECRET` (recommended)
 
+For local-account password recovery, configure the public app URL and SMTP delivery:
+- `PASSWORD_RESET_BASE_URL` (for example, `https://your-domain.example`)
+- `SMTP_HOST`
+- `SMTP_PORT` (usually `587`, or `465` with TLS)
+- `SMTP_SECURE` (`true` for implicit TLS, otherwise `false`)
+- `SMTP_USER`
+- `SMTP_PASS`
+- `PASSWORD_RESET_FROM` (the sender address)
+
+Password reset links are one-time tokens stored only as SHA-256 hashes and expire after one hour. The forgot-password endpoint returns the same message for existing and non-existing emails. In local development, when SMTP is not configured, the reset link is printed to the server console; production requires SMTP configuration and never exposes the link in the API response.
+
 ## Deploying on Railway
 1. Push this repo to GitHub
 2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub repo

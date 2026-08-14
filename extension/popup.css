@@ -338,6 +338,22 @@ input[type="number"] {
   gap: 8px;
 }
 
+.account-forgot-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-gold);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.account-forgot-link:hover {
+  text-decoration: underline;
+}
+
 .permanent-feedback-card {
   padding-bottom: 14px;
 }

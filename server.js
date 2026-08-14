@@ -3,9 +3,17 @@ const express = require("express");
 const archiver = require("archiver");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const { auth, requiresAuth } = require("express-openid-connect");
+
+let nodemailer;
+try {
+  nodemailer = require("nodemailer");
+} catch (error) {
+  nodemailer = null;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +21,9 @@ const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
+const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
+const PASSWORD_RESET_REQUEST_COOLDOWN_MS = 1000 * 60;
+const passwordResetRequestTimes = new Map();
 
 app.set("trust proxy", 1);
 
@@ -105,7 +116,7 @@ app.get(["/", "/index.html", "/login.html", "/register.html"], (req, res) => {
 });
 
 const EXTENSION_DIR = path.join(__dirname, "extension");
-const DB_FILE = path.join(__dirname, "database.json");
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, "database.json");
 
 function normalizeEnv(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -192,6 +203,151 @@ function buildProfile(req) {
 
 function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+function isValidEmail(email) {
+  return typeof email === "string" && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function hashResetToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function resetTokenMatches(expectedHash, actualHash) {
+  if (typeof expectedHash !== "string" || typeof actualHash !== "string") {
+    return false;
+  }
+
+  const expected = Buffer.from(expectedHash, "hex");
+  const actual = Buffer.from(actualHash, "hex");
+  return expected.length === actual.length && expected.length > 0 && crypto.timingSafeEqual(expected, actual);
+}
+
+function getPasswordResetBaseUrl(req) {
+  const configuredBaseUrl = normalizeEnv(process.env.PASSWORD_RESET_BASE_URL || process.env.BASE_URL);
+  if (configuredBaseUrl) {
+    return configuredBaseUrl.replace(/\/+$/, "");
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return "";
+  }
+
+  return `${req.protocol}://${req.get("host")}`.replace(/\/+$/, "");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getPasswordResetTransporter() {
+  const smtpHost = normalizeEnv(process.env.SMTP_HOST);
+  if (!smtpHost || !nodemailer) {
+    return null;
+  }
+
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpUser = normalizeEnv(process.env.SMTP_USER);
+  const smtpPass = process.env.SMTP_PASS || "";
+  const transportOptions = {
+    host: smtpHost,
+    port: smtpPort,
+    secure: process.env.SMTP_SECURE === "true" || smtpPort === 465,
+  };
+
+  if (smtpUser || smtpPass) {
+    transportOptions.auth = { user: smtpUser, pass: smtpPass };
+  }
+
+  return nodemailer.createTransport(transportOptions);
+}
+
+async function sendPasswordResetEmail(email, resetUrl) {
+  const transporter = getPasswordResetTransporter();
+  const from = normalizeEnv(
+    process.env.PASSWORD_RESET_FROM || process.env.SMTP_FROM || process.env.SMTP_USER
+  );
+
+  if (!transporter || !from) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Password reset email is not configured.");
+    }
+
+    console.log(`[development] Password reset link for ${email}: ${resetUrl}`);
+    return;
+  }
+
+  const safeUrl = escapeHtml(resetUrl);
+  await transporter.sendMail({
+    from,
+    to: email,
+    subject: "Reset your AuraFocus password",
+    text: [
+      "We received a request to reset your AuraFocus password.",
+      "",
+      `Reset your password here: ${resetUrl}`,
+      "",
+      "This link expires in one hour and can only be used once.",
+      "If you did not request this, you can ignore this email.",
+    ].join("\n"),
+    html: `
+      <p>We received a request to reset your AuraFocus password.</p>
+      <p><a href="${safeUrl}">Reset your password</a></p>
+      <p>This link expires in one hour and can only be used once.</p>
+      <p>If you did not request this, you can ignore this email.</p>
+    `,
+  });
+}
+
+function isPasswordResetRateLimited(req, email) {
+  const now = Date.now();
+  const clientKey = req.ip || req.socket.remoteAddress || "unknown";
+  const keys = [`ip:${clientKey}`, `email:${email}`];
+
+  for (const key of keys) {
+    const lastRequestedAt = passwordResetRequestTimes.get(key) || 0;
+    if (now - lastRequestedAt < PASSWORD_RESET_REQUEST_COOLDOWN_MS) {
+      return true;
+    }
+  }
+
+  keys.forEach((key) => passwordResetRequestTimes.set(key, now));
+  if (passwordResetRequestTimes.size > 10000) {
+    for (const [key, timestamp] of passwordResetRequestTimes) {
+      if (now - timestamp >= PASSWORD_RESET_REQUEST_COOLDOWN_MS) {
+        passwordResetRequestTimes.delete(key);
+      }
+    }
+  }
+
+  return false;
+}
+
+function clearPasswordResetFields(user) {
+  delete user.passwordResetTokenHash;
+  delete user.passwordResetExpiresAt;
+}
+
+function findUserByResetToken(users, token) {
+  if (typeof token !== "string" || token.length < 32 || token.length > 256) {
+    return null;
+  }
+
+  const tokenHash = hashResetToken(token);
+  const now = Date.now();
+  return users.find((user) => {
+    const expiresAt = Number(user.passwordResetExpiresAt);
+    return (
+      user.passwordResetTokenHash &&
+      expiresAt > now &&
+      resetTokenMatches(user.passwordResetTokenHash, tokenHash)
+    );
+  }) || null;
 }
 
 function isRegisteredUser(email) {
@@ -368,6 +524,87 @@ app.post("/auth/local/login", async (req, res) => {
     name: normalizeEmail(user.email),
   };
   return res.json({ success: true });
+});
+
+const passwordResetResponse = {
+  message: "If an account exists for that email, a password reset link has been sent.",
+};
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = normalizeEmail(req.body && req.body.email);
+
+  // Always return the same response so this endpoint cannot be used to discover accounts.
+  if (!isValidEmail(email) || isPasswordResetRateLimited(req, email)) {
+    return res.status(202).json(passwordResetResponse);
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => normalizeEmail(item.email) === email);
+
+  if (!user || !user.passwordHash) {
+    return res.status(202).json(passwordResetResponse);
+  }
+
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  user.passwordResetTokenHash = hashResetToken(resetToken);
+  user.passwordResetExpiresAt = Date.now() + PASSWORD_RESET_TOKEN_TTL_MS;
+  user.updatedAt = Date.now();
+  writeDB(db);
+
+  const baseUrl = getPasswordResetBaseUrl(req);
+  if (!baseUrl) {
+    clearPasswordResetFields(user);
+    writeDB(db);
+    console.error("Password reset request rejected because PASSWORD_RESET_BASE_URL or BASE_URL is missing.");
+    return res.status(202).json(passwordResetResponse);
+  }
+
+  const resetUrl = new URL("/reset-password.html", `${baseUrl}/`);
+  resetUrl.searchParams.set("token", resetToken);
+
+  try {
+    await sendPasswordResetEmail(email, resetUrl.toString());
+  } catch (error) {
+    // Do not leave a usable token behind when delivery fails.
+    const currentDb = readDB();
+    const currentUser = currentDb.users && currentDb.users.find(
+      (item) => normalizeEmail(item.email) === email
+    );
+    if (currentUser && currentUser.passwordResetTokenHash === user.passwordResetTokenHash) {
+      clearPasswordResetFields(currentUser);
+      writeDB(currentDb);
+    }
+    console.error("Password reset email could not be sent:", error.message);
+  }
+
+  return res.status(202).json(passwordResetResponse);
+});
+
+app.post("/api/auth/reset-password", (req, res) => {
+  const token = typeof (req.body && req.body.token) === "string" ? req.body.token.trim() : "";
+  const password = req.body && req.body.password;
+
+  if (typeof password !== "string" || password.length < 8 || password.length > 256) {
+    return res.status(400).json({ error: "Use a password between 8 and 256 characters." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = findUserByResetToken(db.users, token);
+  if (!user) {
+    return res.status(400).json({ error: "This reset link is invalid or expired. Request a new one." });
+  }
+
+  user.passwordHash = bcrypt.hashSync(password, 12);
+  user.provider = user.provider === "google" ? "hybrid" : (user.provider || "local");
+  // Rotating this token invalidates extension sessions created before the reset.
+  user.extensionToken = createExtensionToken();
+  user.updatedAt = Date.now();
+  clearPasswordResetFields(user);
+  writeDB(db);
+
+  return res.json({ success: true, message: "Your password has been reset. You can now log in." });
 });
 
 app.post("/api/auth/signup", (req, res) => {
