@@ -1253,6 +1253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const data = await response.json();
       accountUser = data.user;
       await chrome.storage.local.set({ accountUser });
+      await restoreProgress(data.progress);
       renderAccount();
     } catch (e) {
       console.error("Could not refresh account profile:", e);
