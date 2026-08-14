@@ -203,7 +203,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
-    chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
+    chrome.runtime.sendMessage({ type: "GET_STATE" }, async (response) => {
       if (chrome.runtime.lastError || !response || !response.success) {
         console.error("Could not fetch state from background service.");
         return;
@@ -212,6 +212,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const state = response.state;
       currentAllowedUrls = state.allowedUrls;
       focusMode = state.focusMode || focusMode;
+      const accountStateSlot = accountSlot(focusMode);
+      const accountState = await chrome.storage.local.get([accountStateSlot.token, accountStateSlot.user]);
+      accountToken = accountState[accountStateSlot.token] || null;
+      accountUser = accountState[accountStateSlot.user] || null;
+      await chrome.storage.local.set({ accountToken: accountToken || "", accountUser: accountUser || null });
+      renderAccount();
       modeLocked = !!state.modeLocked;
       hasParentPassword = !!state.hasParentPassword;
       childSyncUnlocked = !!state.childSyncUnlocked;
