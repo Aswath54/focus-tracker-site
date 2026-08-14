@@ -438,25 +438,50 @@ async function handleMessages(request) {
       }
 
       const progress = request.progress || {};
-      const existing = await chrome.storage.local.get(["accountToken"]);
+      const existing = await chrome.storage.local.get([
+        "accountToken",
+        "allowedUrls",
+        "whitelistHistory",
+        "feedbackHistory",
+        "password",
+        "parentPassword",
+        "parentEmail",
+        "focusMode",
+        "modeLocked",
+        "childLinked",
+        "permanentFeedback"
+      ]);
+      const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
+      const remoteWhitelistHistory = Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [];
+      const remoteFeedbackHistory = Array.isArray(progress.feedbackHistory) ? progress.feedbackHistory : [];
+      const remoteFocusMode = ["self", "parent", "child"].includes(progress.focusMode) ? progress.focusMode : "self";
+      const remotePermanentFeedback = progress.permanentFeedback && typeof progress.permanentFeedback === "object"
+        ? progress.permanentFeedback
+        : null;
       await chrome.storage.local.set({
-        allowedUrls: Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [],
-        whitelistHistory: Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [],
-        feedbackHistory: Array.isArray(progress.feedbackHistory) ? progress.feedbackHistory : [],
-        password: typeof progress.lockPassword === "string" ? progress.lockPassword : "",
-        parentPassword: typeof progress.parentPassword === "string" ? progress.parentPassword : "",
-        parentEmail: typeof progress.parentEmail === "string" ? progress.parentEmail.trim().toLowerCase() : "",
-        childLinked: !!progress.childLinked,
-        modeLocked: !!progress.modeLocked,
+        allowedUrls: remoteAllowedUrls.length ? remoteAllowedUrls : (existing.allowedUrls || []),
+        whitelistHistory: remoteWhitelistHistory.length ? remoteWhitelistHistory : (existing.whitelistHistory || []),
+        feedbackHistory: remoteFeedbackHistory.length ? remoteFeedbackHistory : (existing.feedbackHistory || []),
+        password: typeof progress.lockPassword === "string" && progress.lockPassword
+          ? progress.lockPassword
+          : (existing.password || ""),
+        parentPassword: typeof progress.parentPassword === "string" && progress.parentPassword
+          ? progress.parentPassword
+          : (existing.parentPassword || ""),
+        parentEmail: typeof progress.parentEmail === "string" && progress.parentEmail.trim()
+          ? progress.parentEmail.trim().toLowerCase()
+          : (existing.parentEmail || ""),
+        childLinked: typeof existing.childLinked === "boolean" ? existing.childLinked : !!progress.childLinked,
+        modeLocked: typeof existing.modeLocked === "boolean" ? existing.modeLocked : !!progress.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken
           : typeof existing.accountToken === "string"
             ? existing.accountToken
             : "",
-        focusMode: ["self", "parent", "child"].includes(progress.focusMode) ? progress.focusMode : "self",
-        permanentFeedback: progress.permanentFeedback && typeof progress.permanentFeedback === "object"
-          ? progress.permanentFeedback
-          : { rating: 0, thumb: null, comments: "" }
+        focusMode: ["self", "parent", "child"].includes(existing.focusMode)
+          ? existing.focusMode
+          : remoteFocusMode,
+        permanentFeedback: remotePermanentFeedback || existing.permanentFeedback || { rating: 0, thumb: null, comments: "" }
       });
       return { success: true };
     }
