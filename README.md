@@ -23,8 +23,9 @@ For Auth0 login to work, set these environment variables:
 
 For the admin console, also set:
 - `ADMIN_EMAIL`
-- `ADMIN_PASSWORD_HASH`
 - `ADMIN_SESSION_SECRET` (recommended)
+
+The admin console now uses the authorized Google account matching `ADMIN_EMAIL`; `ADMIN_PASSWORD_HASH` is no longer used.
 
 For local-account password recovery, configure the public app URL and SMTP delivery:
 - `PASSWORD_RESET_BASE_URL` (for example, `https://your-domain.example`)

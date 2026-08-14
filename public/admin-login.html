@@ -7,79 +7,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body class="admin-shell">
   <main class="admin-auth-card">
     <div class="hero-badge">ADMIN ONLY</div>
     <h1 class="admin-auth-title">AuraFocus Console</h1>
-    <p class="admin-auth-copy">Sign in with the private admin account to review extension feedback. Admin credentials are verified server-side.</p>
+    <p class="admin-auth-copy">Use the authorized Google account to access the private admin console.</p>
 
-    <a href="/download" class="btn btn-ghost btn-large admin-auth-btn" style="text-decoration: none; margin-bottom: 18px;">Download Extension</a>
-
-    <form id="admin-login-form" class="admin-auth-form">
-      <label class="admin-auth-label" for="email">Email</label>
-      <input id="email" name="email" type="email" class="admin-auth-input" autocomplete="username" required />
-
-      <label class="admin-auth-label" for="password">Password</label>
-      <div class="admin-password-row">
-        <input id="password" name="password" type="password" class="admin-auth-input" autocomplete="current-password" required />
-        <button class="admin-toggle-password" type="button" data-target="password" aria-label="Show password" title="Show password">
-          <svg class="password-eye" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M1 12c1.2-2.9 5.5-7 11-7s9.8 4.1 11 7c-1.2 2.9-5.5 7-11 7s-9.8-4.1-11-7z" />
-            <circle cx="12" cy="12" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8" />
-          </svg>
-          <svg class="password-eye-off" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M2 12c1.2-2.9 5.5-7 10-7 1.5 0 2.9.3 4.1.8" />
-            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M22 12c-.9 2.2-3 4.7-5.8 6" />
-            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M9.7 9.7A3.8 3.8 0 0 0 12 16a3.8 3.8 0 0 0 2.3-.8" />
-            <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
-          </svg>
-        </button>
-      </div>
-
-      <button type="submit" class="btn btn-primary btn-large admin-auth-btn">Open Console</button>
-      <p id="admin-login-error" class="admin-auth-error" aria-live="polite"></p>
-    </form>
+    <p id="admin-login-error" class="admin-auth-error" aria-live="polite"></p>
+    <a href="/admin/login/google" class="btn btn-primary btn-large admin-auth-btn" style="justify-content: center; text-decoration: none;">
+      Continue with Google
+    </a>
+    <a class="auth-back-link" href="/">Back to AuraFocus</a>
   </main>
 
   <script>
-    const form = document.getElementById("admin-login-form");
     const errorEl = document.getElementById("admin-login-error");
-
-    document.querySelector(".admin-toggle-password").addEventListener("click", (event) => {
-      const button = event.currentTarget;
-      const input = document.getElementById(button.dataset.target);
-      const hidden = input.type === "password";
-      input.type = hidden ? "text" : "password";
-      button.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
-      button.title = hidden ? "Hide password" : "Show password";
-      button.classList.toggle("is-visible", hidden);
-    });
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      errorEl.textContent = "";
-
-      const payload = {
-        email: form.email.value,
-        password: form.password.value,
-      };
-
-      const response = await fetch("/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: "Invalid admin credentials." }));
-        errorEl.textContent = data.error || "Invalid admin credentials.";
-        return;
-      }
-
-      window.location.href = "/admin";
-    });
+    if (new URLSearchParams(window.location.search).get("error") === "unauthorized") {
+      errorEl.textContent = "That Google account is not authorized for the admin console.";
+    }
   </script>
 </body>
 </html>

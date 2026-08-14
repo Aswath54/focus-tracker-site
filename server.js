@@ -18,7 +18,6 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
 const AUTH0_EXTENSION_ID = normalizeEnv(process.env.AUTH0_EXTENSION_ID);
@@ -183,10 +182,6 @@ function requireAdmin(req, res, next) {
     return next();
   }
   return res.redirect("/admin-login.html");
-}
-
-function isAdminConfigured() {
-  return Boolean(ADMIN_EMAIL && ADMIN_PASSWORD_HASH);
 }
 
 function isAppAuthenticated(req) {
@@ -518,6 +513,35 @@ app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
   return res.redirect("/");
 });
 
+app.get("/admin/login/google", (req, res) => {
+  if (!hasFullAuthConfig || !ADMIN_EMAIL) {
+    return res.status(503).send("Google admin authentication is not configured.");
+  }
+
+  return req.oidc.login({
+    returnTo: "/admin/auth/complete",
+    authorizationParams: {
+      connection: "google-oauth2",
+      prompt: "select_account",
+      scope: "openid profile email",
+    },
+  });
+});
+
+app.get("/admin/auth/complete", requireAuthIfConfigured, (req, res) => {
+  const signedInEmail = normalizeEmail(req.oidc && req.oidc.user && req.oidc.user.email);
+  if (!signedInEmail || signedInEmail !== ADMIN_EMAIL) {
+    if (req.oidc && typeof req.oidc.logout === "function") {
+      return req.oidc.logout({ returnTo: "/admin-login.html?error=unauthorized" });
+    }
+    return res.status(403).send("This Google account is not authorized for the admin console.");
+  }
+
+  req.session.isAdmin = true;
+  req.session.adminEmail = signedInEmail;
+  return res.redirect("/admin");
+});
+
 app.post("/auth/local/signup", (req, res) => {
   return res.status(410).json({ error: "Google sign-in is required." });
 });
@@ -740,22 +764,7 @@ app.post("/auth/local/logout", (req, res) => {
 });
 
 app.post("/admin/login", async (req, res) => {
-  if (!isAdminConfigured()) {
-    return res.status(503).json({ error: "Admin login is not configured." });
-  }
-
-  const { email, password } = req.body || {};
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const candidatePassword = typeof password === "string" ? password : "";
-
-  const isPasswordValid = await bcrypt.compare(candidatePassword, ADMIN_PASSWORD_HASH);
-  if (normalizedEmail !== ADMIN_EMAIL || !isPasswordValid) {
-    return res.status(401).json({ error: "Invalid admin credentials." });
-  }
-
-  req.session.isAdmin = true;
-  req.session.adminEmail = ADMIN_EMAIL;
-  return res.json({ success: true });
+  return res.status(410).json({ error: "Use Google sign-in for the admin console." });
 });
 
 app.post("/admin/logout", (req, res) => {
