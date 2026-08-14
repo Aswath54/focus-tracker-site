@@ -1,44 +1,36 @@
-# AuraFocus Tracker Extension 🛡️
+# AuraFocus Extension Guide
 
-A premium, glassmorphic Chrome Extension (Manifest V3) designed to help you stay focused by blocking distracting websites, leaving only your custom whitelisted pages and core educational platforms accessible.
+## What AuraFocus Does
 
-## Core Features
-1. **Password-Locked Focus Sessions**: Set a password during setup. Once a focus session starts, it **cannot be turned off or bypassed** unless you enter the correct password.
-2. **Selective Blocking (Whitelist)**: Input specific URLs you need for work/focus. All other websites will be blocked.
-3. **Always-Allowed Educational Sites**: Standard educational platforms (like Wikipedia, StackOverflow, GitHub, Coursera, and Khan Academy) are automatically allowed so you are never locked out of research or learning tools.
-4. **Active Tab Redirection**: Starting a focus session immediately scans and redirects any open distracting tabs.
-5. **Aesthetic Block Screen**: Distracting attempts redirect to a beautiful, dark-themed glowing card displaying a countdown timer and randomized motivational focus quotes.
-6. **Robust Background Sync**: Built using `chrome.alarms` to ensure sessions track reliably even if Chrome terminates background workers to save memory.
+AuraFocus is a Chromium browser extension that starts timed focus sessions and blocks websites that are not on the allowed list.
 
----
+### Focus modes
 
-## Installation Guide (Chrome / Edge / Brave)
+- **Self:** Personal use. Set allowed websites, create a session password, and start your own timer.
+- **Parent:** Sign in with Google, create a Sync password, and control a linked child device remotely. Only Parent mode can stop a locked child session.
+- **Child:** Sign in with Google, select Child mode, and enter the Sync password created by the parent. The child device receives and applies the parent’s sessions.
 
-To load and use this extension in your browser:
+The Sync password is separate from the Google password. It is created in Parent mode and entered once in Child mode to unlock synchronization.
 
-1. Open your browser and navigate to the extensions page:
-   - **Chrome**: Go to `chrome://extensions/`
-   - **Edge**: Go to `edge://extensions/`
-   - **Brave**: Go to `brave://extensions/`
-2. Enable **Developer mode** using the toggle switch in the top-right corner.
-3. Click the **Load unpacked** button in the top-left corner.
-4. Select the `C:\Users\Aswath\apps\focus-tracker-extension` directory.
-5. The extension is now active! Pin it to your toolbar for easy access.
+## Download and Install
 
----
+1. Open the AuraFocus website.
+2. Click **Download** or **Download for Any Computer (.zip)**.
+3. Save the ZIP file and choose **Extract All**.
+4. Open Chrome and go to `chrome://extensions` (or `edge://extensions` in Edge).
+5. Turn on **Developer mode**.
+6. Click **Load unpacked**.
+7. Select the extracted folder containing `manifest.json`.
+8. Pin AuraFocus from the browser’s Extensions menu.
 
-## File Structure
-* [manifest.json](file:///C:/Users/Aswath/apps/focus-tracker-extension/manifest.json) — Extension definition and permissions (storage, alarms, webNavigation).
-* [icon.svg](file:///C:/Users/Aswath/apps/focus-tracker-extension/icon.svg) — Scaleable vector icon representing secure focus.
-* [background.js](file:///C:/Users/Aswath/apps/focus-tracker-extension/background.js) — Intercepts navigation, verifies passwords, and coordinates timers.
-* [popup.html](file:///C:/Users/Aswath/apps/focus-tracker-extension/popup.html) / [popup.js](file:///C:/Users/Aswath/apps/focus-tracker-extension/popup.js) / [popup.css](file:///C:/Users/Aswath/apps/focus-tracker-extension/popup.css) — Main extension popup dropdown UI.
-* [blocked.html](file:///C:/Users/Aswath/apps/focus-tracker-extension/blocked.html) / [blocked.js](file:///C:/Users/Aswath/apps/focus-tracker-extension/blocked.js) / [blocked.css](file:///C:/Users/Aswath/apps/focus-tracker-extension/blocked.css) — The full-page overlay displayed when navigating to blocked sites.
+## First-time setup
 
----
+1. Click the AuraFocus icon and select Self, Parent, or Child mode.
+2. Select **Continue with Google** and complete sign-in.
+3. In Self mode, create a session password.
+4. For Parent/Child use, sign in on both devices with the same Google account.
+5. On the Parent device, create the Sync password.
+6. On the Child device, enter that Sync password to unlock sync.
+7. On the Parent device, choose a timer and click **Start Child Session**.
 
-## Design Choices & Implementation Details
-
-* **Glassmorphism**: Built using modern CSS styling including `backdrop-filter: blur()`, radial breathing gradients, Orbitron fonts, and drop-shadow glow effects.
-* **Security Model**: The password is saved to local chrome storage. Any modification of the active session or edit of the whitelists checks the entered password against the storage key in the background script context to prevent front-end tampering.
-* **Persistent States**: Utilizes Manifest V3 `alarms` rather than simple JavaScript intervals in `background.js` since MV3 background workers sleep dynamically.
-* **Backend URL Config**: `popup.js` reads `backendUrl` from `chrome.storage.local` and falls back to the default Railway URL. Set this key if you move the service to another Railway account or domain.
+The extension must remain installed and enabled. The child device needs an internet connection to receive parent sessions. Only the Parent device can stop a synced locked session. After updating the extension, reload it from `chrome://extensions`.
