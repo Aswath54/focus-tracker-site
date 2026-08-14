@@ -85,6 +85,8 @@ async function getExtensionState() {
     "childSyncUnlocked",
     "focusMode",
     "modeLocked",
+    "showFeedbackPrompt",
+    "feedbackPromptSessionId",
     "accountToken",
     "accountUser"
   ]);
@@ -99,6 +101,8 @@ async function getExtensionState() {
     childSyncUnlocked: !!result.childSyncUnlocked,
     focusMode: result.focusMode || "self",
     modeLocked: !!result.modeLocked,
+    showFeedbackPrompt: !!result.showFeedbackPrompt,
+    feedbackPromptSessionId: result.feedbackPromptSessionId || null,
     hasAccount: !!(result.accountToken || result.accountUser)
   };
 }

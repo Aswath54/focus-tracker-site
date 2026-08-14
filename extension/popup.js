@@ -228,7 +228,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired || isChildMode || !state.hasPassword ? "none" : "block";
+        const sessionFeedbackPending = !!state.showFeedbackPrompt && !!state.feedbackPromptSessionId;
+        secPermanentFeedback.style.display = accountRequired || isChildMode || !state.hasPassword || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
       secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
