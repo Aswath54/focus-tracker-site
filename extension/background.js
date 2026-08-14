@@ -306,8 +306,9 @@ async function handleMessages(request) {
         return { success: false, error: "Parent password must be at least 4 characters." };
       }
       const parentEmail = typeof request.parentEmail === "string" ? request.parentEmail.trim().toLowerCase() : "";
-      if (!parentEmail) {
-        return { success: false, error: "Log in with the parent account before saving a parent password." };
+      const accountState = await chrome.storage.local.get(["accountToken"]);
+      if (!parentEmail || !accountState.accountToken) {
+        return { success: false, error: "Sign in with Google in Account Sync before saving a parent password." };
       }
       await chrome.storage.local.set({ parentPassword: request.parentPassword, parentEmail });
       return { success: true };

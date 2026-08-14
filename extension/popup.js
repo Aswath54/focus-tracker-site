@@ -512,12 +512,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       }, async (response) => {
         if (response && response.success) {
           parentPassword = parentPass;
-          const synced = await syncProgress();
+          const syncResult = await syncProgress();
           if (parentPasswordInput) parentPasswordInput.value = "";
           if (parentPasswordConfirm) parentPasswordConfirm.value = "";
           parentPasswordError.style.display = "none";
-          if (!synced) {
-            showError(parentPasswordError, "Parent password saved locally, but could not sync to the account. Check your connection and try again.");
+          if (!syncResult.success) {
+            showError(parentPasswordError, `Parent password saved locally, but could not sync: ${syncResult.error}`);
             return;
           }
           if (parentPasswordSuccess) {
@@ -1428,7 +1428,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function syncProgress() {
-    if (!accountToken) return false;
+    if (!accountToken) {
+      return {
+        success: false,
+        error: "Sign in with Google in Account Sync before saving a parent password."
+      };
+    }
     try {
       const progress = await buildProgressPayload();
       const response = await fetch(backendPath("/api/progress"), {
@@ -1443,10 +1448,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || `Account sync failed with status ${response.status}.`);
       }
-      return true;
+      return { success: true };
     } catch (e) {
       console.error("Progress sync failed:", e);
-      return false;
+      return {
+        success: false,
+        error: e.message || "Account sync failed."
+      };
     }
   }
 
