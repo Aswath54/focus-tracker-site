@@ -566,6 +566,9 @@ async function handleMessages(request) {
     
     else if (request.type === "STOP_SESSION") {
       const storage = await chrome.storage.local.get(["password", "parentPassword", "focusMode"]);
+      if (storage.focusMode === "child") {
+        return { success: false, error: "Only Parent mode can stop a locked session." };
+      }
       const controlPassword = storage.focusMode === "parent" ? storage.parentPassword : storage.password;
       if (!controlPassword || controlPassword !== request.password) {
         return { success: false, error: "Incorrect password. Stay focused!" };
