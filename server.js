@@ -488,7 +488,7 @@ app.get("/login/google", (req, res) => {
     return res.status(503).send("Google authentication is not configured.");
   }
 
-  return req.oidc.login({
+  return res.oidc.login({
     returnTo: "/",
     authorizationParams: {
       connection: "google-oauth2",
@@ -518,7 +518,7 @@ app.get("/admin/login/google", (req, res) => {
     return res.status(503).send("Google admin authentication is not configured.");
   }
 
-  return req.oidc.login({
+  return res.oidc.login({
     returnTo: "/admin/auth/complete",
     authorizationParams: {
       connection: "google-oauth2",
@@ -531,8 +531,8 @@ app.get("/admin/login/google", (req, res) => {
 app.get("/admin/auth/complete", requireAuthIfConfigured, (req, res) => {
   const signedInEmail = normalizeEmail(req.oidc && req.oidc.user && req.oidc.user.email);
   if (!signedInEmail || signedInEmail !== ADMIN_EMAIL) {
-    if (req.oidc && typeof req.oidc.logout === "function") {
-      return req.oidc.logout({ returnTo: "/admin-login.html?error=unauthorized" });
+    if (res.oidc && typeof res.oidc.logout === "function") {
+      return res.oidc.logout({ returnTo: "/admin-login.html?error=unauthorized" });
     }
     return res.status(403).send("This Google account is not authorized for the admin console.");
   }
