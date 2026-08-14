@@ -236,10 +236,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (secPermanentFeedback) {
         const sessionFeedbackPending = !!state.showFeedbackPrompt && !!state.feedbackPromptSessionId;
-        secPermanentFeedback.style.display = accountRequired || isChildMode || !state.hasPassword || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || isChildMode || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
       }
       secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
-      secChangePassword.style.display = showParentOnlyPanels ? "none" : state.hasPassword && !isChildMode ? "block" : "none";
+      secChangePassword.style.display = "none";
       if (parentControlPanel) {
         parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
       }
@@ -361,7 +361,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               showSection(secIdleSession);
               updateStatus(false, "Idle");
               secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block"; // Restore whitelist
-              secChangePassword.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
+              secChangePassword.style.display = "none";
             }
           });
         });
