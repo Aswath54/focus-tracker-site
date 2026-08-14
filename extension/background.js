@@ -1,5 +1,9 @@
 // AuraFocus Service Worker (background.js)
 
+const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
+const REMOTE_FOCUS_SESSION_ALARM = "remote-focus-session-sync";
+const REMOTE_FOCUS_SESSION_PERIOD_MINUTES = 0.5;
+
 const EDUCATIONAL_DOMAINS = [
   "wikipedia.org",
   "khanacademy.org",
@@ -205,8 +209,159 @@ async function updateBlockingRules(allowedUrls) {
   });
 }
 
+async function getRemoteBackendUrl() {
+  const result = await chrome.storage.local.get("backendUrl");
+  const configuredUrl = typeof result.backendUrl === "string" ? result.backendUrl.trim() : "";
+  return (configuredUrl || DEFAULT_BACKEND_URL).replace(/\/+$/, "");
+}
+
+async function requestRemoteFocusSession(path, options = {}) {
+  const account = await chrome.storage.local.get("accountToken");
+  if (!account.accountToken) {
+    return { skipped: true, error: "Sign in with Google before syncing focus sessions." };
+  }
+
+  const headers = {
+    Authorization: `Bearer ${account.accountToken}`
+  };
+  const requestOptions = {
+    method: options.method || "GET",
+    headers
+  };
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    requestOptions.body = JSON.stringify(options.body);
+  }
+
+  try {
+    const response = await fetch(`${await getRemoteBackendUrl()}${path}`, requestOptions);
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, data };
+  } catch (error) {
+    console.warn("Remote focus session request failed:", error.message);
+    return { ok: false, error: "Could not reach the account sync server." };
+  }
+}
+
+async function applyLocalFocusSession(session, remote = false) {
+  const endTime = Number(session && session.endTime);
+  if (!Number.isFinite(endTime) || endTime <= Date.now()) {
+    return false;
+  }
+
+  const sessionId = typeof session.sessionId === "string" && session.sessionId
+    ? session.sessionId
+    : `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const allowedUrls = Array.isArray(session.allowedUrls)
+    ? session.allowedUrls.filter((item) => typeof item === "string")
+    : [];
+  const current = await chrome.storage.local.get(["isFocusActive", "sessionEndTime", "remoteSessionId"]);
+  if (
+    remote &&
+    current.isFocusActive &&
+    current.remoteSessionId === sessionId &&
+    Number(current.sessionEndTime) === endTime
+  ) {
+    return true;
+  }
+
+  await chrome.storage.local.set({
+    isFocusActive: true,
+    sessionEndTime: endTime,
+    allowedUrls,
+    activeSessionId: sessionId,
+    remoteSessionId: remote ? sessionId : null,
+    showFeedbackPrompt: false,
+    feedbackPromptDeferred: false,
+    feedbackPromptSessionId: null
+  });
+  await chrome.alarms.create("focusTimer", { when: endTime });
+  await updateBlockingRules(allowedUrls);
+  await redirectActiveBlockedTabs(allowedUrls);
+  return true;
+}
+
+async function startRemoteFocusSession(durationSeconds, allowedUrls) {
+  const result = await requestRemoteFocusSession("/api/focus-session/start", {
+    method: "POST",
+    body: { focusMode: "parent", durationSeconds, allowedUrls }
+  });
+  if (result.skipped) {
+    return { success: false, error: result.error };
+  }
+  if (!result.ok || !result.data?.session) {
+    return {
+      success: false,
+      error: result.data?.error || result.error || "Could not start the child session."
+    };
+  }
+  return { success: true, session: result.data.session };
+}
+
+async function stopRemoteFocusSession() {
+  const result = await requestRemoteFocusSession("/api/focus-session/stop", {
+    method: "POST",
+    body: { focusMode: "parent" }
+  });
+  if (result.skipped) {
+    return { success: false, error: result.error };
+  }
+  return {
+    success: result.ok,
+    error: result.data?.error || result.error || "Could not stop the child session."
+  };
+}
+
+async function syncRemoteFocusSession() {
+  const local = await chrome.storage.local.get([
+    "accountToken",
+    "focusMode",
+    "childSyncUnlocked",
+    "isFocusActive",
+    "remoteSessionId"
+  ]);
+  if (!local.accountToken) {
+    return { success: true, skipped: true };
+  }
+
+  const result = await requestRemoteFocusSession("/api/focus-session");
+  if (result.skipped || !result.ok) {
+    return { success: false, error: result.error || result.data?.error || "Could not sync the child session." };
+  }
+
+  if (typeof result.data?.childLinked === "boolean") {
+    await chrome.storage.local.set({ childLinked: result.data.childLinked });
+  }
+
+  if (local.focusMode !== "child" || !local.childSyncUnlocked) {
+    return { success: true, skipped: true, childLinked: result.data?.childLinked === true };
+  }
+
+  const session = result.data && result.data.session;
+  if (session && await applyLocalFocusSession(session, true)) {
+    return { success: true, active: true, sessionEndTime: Number(session.endTime) };
+  }
+
+  if (local.remoteSessionId && local.isFocusActive) {
+    await endFocusSession(false);
+  } else if (local.remoteSessionId) {
+    await chrome.storage.local.remove("remoteSessionId");
+  }
+  return { success: true, active: false };
+}
+
+async function ensureRemoteFocusSessionAlarm() {
+  try {
+    await chrome.alarms.create(REMOTE_FOCUS_SESSION_ALARM, {
+      periodInMinutes: REMOTE_FOCUS_SESSION_PERIOD_MINUTES
+    });
+  } catch (error) {
+    console.warn("Could not schedule remote focus session sync:", error.message);
+  }
+}
+
 // Clean up and end focus session
-async function endFocusSession(notified = true) {
+async function endFocusSession(notified = true, showFeedbackPrompt = true) {
   const sessionResult = await chrome.storage.local.get("activeSessionId");
   const feedbackPromptSessionId = sessionResult.activeSessionId || `session_${Date.now()}`;
 
@@ -215,7 +370,8 @@ async function endFocusSession(notified = true) {
     sessionEndTime: 0,
     allowedUrls: [],
     activeSessionId: null,
-    showFeedbackPrompt: true,
+    remoteSessionId: null,
+    showFeedbackPrompt,
     feedbackPromptDeferred: false,
     feedbackPromptSessionId
   });
@@ -271,12 +427,21 @@ async function refreshBlockingRules() {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "focusTimer") {
     await endFocusSession(true);
+  } else if (alarm.name === REMOTE_FOCUS_SESSION_ALARM) {
+    await syncRemoteFocusSession();
   }
 });
 
 // Extension Startup listeners
-chrome.runtime.onStartup.addListener(refreshBlockingRules);
-chrome.runtime.onInstalled.addListener(refreshBlockingRules);
+async function initializeExtension() {
+  await ensureRemoteFocusSessionAlarm();
+  await refreshBlockingRules();
+  await syncRemoteFocusSession();
+}
+
+chrome.runtime.onStartup.addListener(initializeExtension);
+chrome.runtime.onInstalled.addListener(initializeExtension);
+ensureRemoteFocusSessionAlarm();
 
 // Message Handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -286,13 +451,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function handleMessages(request) {
   try {
+    if (request.type === "SYNC_REMOTE_SESSION") {
+      return await syncRemoteFocusSession();
+    }
+
+    if (request.type === "GET_STATE") {
+      await syncRemoteFocusSession();
+      return { success: true, state: await getExtensionState() };
+    }
+
     const state = await getExtensionState();
     
-    if (request.type === "GET_STATE") {
-      return { success: true, state };
-    }
-    
-    else if (request.type === "SET_PASSWORD") {
+    if (request.type === "SET_PASSWORD") {
       if (state.hasPassword) {
         return { success: false, error: "Password is already configured." };
       }
@@ -359,33 +529,30 @@ async function handleMessages(request) {
       if (state.focusMode === "parent" && !state.childLinked) {
         return { success: false, error: "Link a child first before starting a parent session." };
       }
+      const durationSec = Number(request.durationSeconds);
+      if (!Number.isFinite(durationSec) || durationSec < 60 || durationSec > 720 * 60) {
+        return { success: false, error: "Choose a duration between 1 minute and 12 hours." };
+      }
+
+      if (state.focusMode === "parent") {
+        if (state.isFocusActive) {
+          await endFocusSession(false, false);
+        }
+        const remoteResult = await startRemoteFocusSession(durationSec, request.allowedUrls || []);
+        if (!remoteResult.success) {
+          return remoteResult;
+        }
+        return { success: true, sessionEndTime: remoteResult.session.endTime, remote: true };
+      }
+
       if (state.isFocusActive && Date.now() < state.sessionEndTime) {
         return { success: false, error: "Focus session is already running." };
       }
 
-      const durationSec = request.durationSeconds;
       const endTime = Date.now() + durationSec * 1000;
       const allowedUrls = request.allowedUrls || [];
       const activeSessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-      await chrome.storage.local.set({
-        isFocusActive: true,
-        sessionEndTime: endTime,
-        allowedUrls: allowedUrls,
-        activeSessionId,
-        showFeedbackPrompt: false,
-        feedbackPromptDeferred: false,
-        feedbackPromptSessionId: null
-      });
-
-      // Set alarm
-      await chrome.alarms.create("focusTimer", { when: endTime });
-
-      // Apply network redirect rules
-      await updateBlockingRules(allowedUrls);
-
-      // Scan and redirect existing tabs
-      await redirectActiveBlockedTabs(allowedUrls);
+      await applyLocalFocusSession({ sessionId: activeSessionId, endTime, allowedUrls });
 
       return { success: true, sessionEndTime: endTime };
     }
@@ -397,6 +564,12 @@ async function handleMessages(request) {
         return { success: false, error: "Incorrect password. Stay focused!" };
       }
 
+      if (storage.focusMode === "parent") {
+        const remoteResult = await stopRemoteFocusSession();
+        if (!remoteResult.success) {
+          return remoteResult;
+        }
+      }
       await endFocusSession(false);
       return { success: true };
     }

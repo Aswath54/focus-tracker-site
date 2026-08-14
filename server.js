@@ -449,6 +449,24 @@ function sanitizeProgress(progress) {
   };
 }
 
+function sanitizeFocusSession(session) {
+  const source = session && typeof session === "object" ? session : {};
+  const sessionId = typeof source.sessionId === "string" ? source.sessionId.trim().slice(0, 128) : "";
+  const endTime = Number(source.endTime);
+  if (!sessionId || !Number.isFinite(endTime) || endTime <= Date.now()) {
+    return null;
+  }
+
+  return {
+    sessionId,
+    endTime,
+    startedAt: Number(source.startedAt) || Date.now(),
+    allowedUrls: Array.isArray(source.allowedUrls)
+      ? source.allowedUrls.filter((item) => typeof item === "string").slice(0, 200)
+      : [],
+  };
+}
+
 function requireExtensionUser(req, res, next) {
   const user = findUserByToken(getBearerToken(req));
   if (!user) {
@@ -759,6 +777,86 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
+});
+
+app.get("/api/focus-session", requireExtensionUser, (req, res) => {
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (!session && user.activeFocusSession) {
+    delete user.activeFocusSession;
+    user.updatedAt = Date.now();
+    writeDB(db);
+  }
+  return res.json({
+    active: Boolean(session),
+    session,
+    childLinked: Boolean(user.progress && user.progress.childLinked),
+  });
+});
+
+app.post("/api/focus-session/start", requireExtensionUser, (req, res) => {
+  if (!req.body || req.body.focusMode !== "parent") {
+    return res.status(403).json({ error: "Only Parent mode can start a child session." });
+  }
+
+  const durationSeconds = Number(req.body.durationSeconds);
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 60 || durationSeconds > 720 * 60) {
+    return res.status(400).json({ error: "Choose a duration between 1 minute and 12 hours." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  if (!user.progress || !user.progress.childLinked) {
+    return res.status(409).json({ error: "Complete child sync before starting a child session." });
+  }
+
+  const existingSession = sanitizeFocusSession(user.activeFocusSession);
+  if (existingSession) {
+    return res.status(409).json({ error: "A child focus session is already running.", session: existingSession });
+  }
+
+  const startedAt = Date.now();
+  const focusSession = {
+    sessionId: `focus_${startedAt.toString(36)}_${crypto.randomBytes(8).toString("hex")}`,
+    startedAt,
+    endTime: startedAt + Math.round(durationSeconds * 1000),
+    allowedUrls: Array.isArray(req.body.allowedUrls)
+      ? req.body.allowedUrls.filter((item) => typeof item === "string").slice(0, 200)
+      : [],
+  };
+  user.activeFocusSession = focusSession;
+  user.updatedAt = startedAt;
+  writeDB(db);
+  return res.json({ success: true, session: focusSession });
+});
+
+app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
+  if (!req.body || req.body.focusMode !== "parent") {
+    return res.status(403).json({ error: "Only Parent mode can stop a child session." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  delete user.activeFocusSession;
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true });
 });
 
 app.post("/auth/local/logout", (req, res) => {

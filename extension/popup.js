@@ -222,6 +222,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
         focusModeSelect.disabled = modeLocked;
+        updateFocusModeHelp();
       }
       if (accountModeNote) {
         accountModeNote.style.display = accountRequired ? "block" : "none";
