@@ -99,19 +99,8 @@
         </section>
 
         <form id="account-form" class="form-group" novalidate>
-          <input type="email" id="account-email" placeholder="Email" autocomplete="username">
-          <div class="input-wrapper">
-            <input type="password" id="account-password" placeholder="Password" autocomplete="current-password" required minlength="8">
-            <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
-              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
-          </div>
+          <button id="btn-account-google" class="btn btn-primary" type="button">Continue with Google</button>
           <div id="account-error" class="error-msg" style="display: none;"></div>
-          <div class="account-actions">
-            <button id="btn-account-login" class="btn btn-primary" type="submit">Log In</button>
-            <button id="btn-account-signup" class="btn btn-secondary" type="button">Create Account</button>
-          </div>
-          <button id="btn-account-forgot" class="account-forgot-link" type="button">Forgot password?</button>
         </form>
 
         <section id="parent-control-panel" class="card" style="display: none; margin-top: 12px;">

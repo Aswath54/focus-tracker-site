@@ -35,6 +35,26 @@ function backendPath(path) {
   return `${BACKEND_URL}${path}`;
 }
 
+function bytesToBase64Url(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function createRandomString(byteLength = 32) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
+}
+
+async function createCodeChallenge(codeVerifier) {
+  const data = new TextEncoder().encode(codeVerifier);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBackendUrl();
 
@@ -42,13 +62,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const statusDot = document.getElementById("status-dot");
   const statusLabel = document.getElementById("status-label");
   const accountForm = document.getElementById("account-form");
-  const accountEmail = document.getElementById("account-email");
-  const accountPassword = document.getElementById("account-password");
   const accountStatusText = document.getElementById("account-status-text");
   const accountError = document.getElementById("account-error");
   const accountModeNote = document.getElementById("account-mode-note");
-  const btnAccountSignup = document.getElementById("btn-account-signup");
-  const btnAccountForgot = document.getElementById("btn-account-forgot");
+  const btnAccountGoogle = document.getElementById("btn-account-google");
   const btnAccountLogout = document.getElementById("btn-account-logout");
   const parentControlPanel = document.getElementById("parent-control-panel");
   const childSyncPanel = document.getElementById("child-sync-panel");
@@ -1293,63 +1310,71 @@ document.addEventListener("DOMContentLoaded", async () => {
     return data;
   }
 
-  function hasSupportedEmailDomain(email) {
-    const value = typeof email === "string" ? email.trim().toLowerCase() : "";
-    const atIndex = value.lastIndexOf("@");
-    if (atIndex <= 0 || atIndex === value.length - 1) return false;
-
-    const domain = value.slice(atIndex + 1);
-    const allowedDomains = new Set([
-      "gmail.com",
-      "yahoo.com",
-      "outlook.com",
-      "hotmail.com",
-      "live.com",
-      "icloud.com",
-      "proton.me",
-      "protonmail.com",
-      "aol.com"
-    ]);
-
-    return allowedDomains.has(domain);
+  async function finishGoogleAccountLogin(data) {
+    accountToken = data.token;
+    accountUser = data.user;
+    await chrome.storage.local.set({ accountToken, accountUser });
+    await restoreProgress(data.progress);
+    if (data.progress && data.progress.modeLocked) {
+      modeLocked = true;
+    }
+    renderAccount();
+    await refreshState();
+    await syncProgress();
   }
 
-  async function submitAccount(path) {
+  async function signInWithGoogle() {
     hideAccountError();
-    const email = accountEmail.value.trim();
-    const password = accountPassword.value;
-    if (!email) {
-      showError(accountError, "Enter an email address.");
-      return;
-    }
-    if (!password) {
-      showError(accountError, "Enter a password.");
-      return;
-    }
-    if (password.length < 8) {
-      showError(accountError, "Password must be at least 8 characters.");
-      return;
-    }
-
-    if (!hasSupportedEmailDomain(email)) {
-      showError(accountError, "Use a Gmail, Yahoo, Outlook, iCloud, Proton, or AOL email address.");
-      return;
-    }
-
     try {
-      const data = await accountRequest(path, { email, password });
-      accountToken = data.token;
-      accountUser = data.user;
-      await chrome.storage.local.set({ accountToken, accountUser });
-      await restoreProgress(data.progress);
-      if (data.progress && data.progress.modeLocked) {
-        modeLocked = true;
+      const configResponse = await fetch(backendPath("/api/auth/config"));
+      const config = await configResponse.json().catch(() => ({}));
+      if (!configResponse.ok || !config.issuerBaseUrl || !config.clientId || !config.extensionRedirectUri) {
+        throw new Error(config.error || "Google sign-in is not configured yet.");
       }
-      accountEmail.value = "";
-      accountPassword.value = "";
-      renderAccount();
-      await refreshState();
-      await syncProgress();
+
+      const redirectUri = chrome.identity.getRedirectURL("callback");
+      if (redirectUri !== config.extensionRedirectUri) {
+        throw new Error("The extension OAuth callback does not match the server configuration.");
+      }
+
+      const state = createRandomString();
+      const codeVerifier = createRandomString(48);
+      const codeChallenge = await createCodeChallenge(codeVerifier);
+      const authorizeUrl = new URL(`${config.issuerBaseUrl}/authorize`);
+      authorizeUrl.search = new URLSearchParams({
+        client_id: config.clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "openid profile email",
+        connection: "google-oauth2",
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: "S256",
+      }).toString();
+
+      const callbackUrl = await chrome.identity.launchWebAuthFlow({
+        url: authorizeUrl.toString(),
+        interactive: true,
+      });
+      const callback = new URL(callbackUrl);
+      if (callback.searchParams.get("state") !== state) {
+        throw new Error("Google sign-in state validation failed.");
+      }
+      if (callback.searchParams.get("error")) {
+        throw new Error(callback.searchParams.get("error_description") || "Google sign-in was cancelled.");
+      }
+
+      const code = callback.searchParams.get("code");
+      if (!code) {
+        throw new Error("Google did not return a sign-in code.");
+      }
+
+      const data = await accountRequest("/api/auth/google-login", {
+        code,
+        codeVerifier,
+        redirectUri,
+      });
+      await finishGoogleAccountLogin(data);
     } catch (e) {
       showError(accountError, e.message);
     }
@@ -1413,12 +1438,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     accountToken = null;
     accountUser = null;
     modeLocked = false;
-    if (accountEmail) {
-      accountEmail.value = "";
-    }
-    if (accountPassword) {
-      accountPassword.value = "";
-    }
     hideAccountError();
     if (focusModeSelect) {
       focusModeSelect.disabled = false;
@@ -1434,25 +1453,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  if (accountForm) {
-    accountForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      submitAccount("/api/auth/login");
-    });
-  }
-
-  if (btnAccountSignup) {
-    btnAccountSignup.addEventListener("click", () => {
-      submitAccount("/api/auth/signup");
-    });
-  }
-
-  if (btnAccountForgot) {
-    btnAccountForgot.addEventListener("click", () => {
-      const email = accountEmail ? accountEmail.value.trim() : "";
-      const query = email ? `?email=${encodeURIComponent(email)}` : "";
-      chrome.tabs.create({ url: backendPath(`/forgot-password.html${query}`) });
-    });
+  if (btnAccountGoogle) {
+    btnAccountGoogle.addEventListener("click", signInWithGoogle);
   }
 
   if (btnAccountLogout) {

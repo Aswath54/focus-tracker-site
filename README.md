@@ -37,6 +37,8 @@ For local-account password recovery, configure the public app URL and SMTP deliv
 
 Password reset links are one-time tokens stored only as SHA-256 hashes and expire after one hour. The forgot-password endpoint returns the same message for existing and non-existing emails. In local development, when SMTP is not configured, the reset link is printed to the server console; production requires SMTP configuration and never exposes the link in the API response.
 
+Google-only authentication also requires `AUTH0_EXTENSION_ID` (or the full `AUTH0_EXTENSION_REDIRECT_URI`) for the Chrome extension callback. The extension callback format is `https://<extension-id>.chromiumapp.org/callback`; add that exact URL to the Auth0 application's Allowed Callback URLs.
+
 ## Deploying on Railway
 1. Push this repo to GitHub
 2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub repo

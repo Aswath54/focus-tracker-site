@@ -21,6 +21,7 @@ const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || "";
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
+const AUTH0_EXTENSION_ID = normalizeEnv(process.env.AUTH0_EXTENSION_ID);
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 const PASSWORD_RESET_REQUEST_COOLDOWN_MS = 1000 * 60;
 const passwordResetRequestTimes = new Map();
@@ -112,7 +113,10 @@ app.use(
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get(["/", "/index.html", "/login.html", "/register.html"], (req, res) => {
-  res.redirect("/admin-login.html");
+  if (req.path === "/login.html" || req.path === "/register.html") {
+    return res.sendFile(path.join(__dirname, "public", "login.html"));
+  }
+  return res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 const EXTENSION_DIR = path.join(__dirname, "extension");
@@ -234,6 +238,17 @@ function getPasswordResetBaseUrl(req) {
   }
 
   return `${req.protocol}://${req.get("host")}`.replace(/\/+$/, "");
+}
+
+function getAuth0ExtensionRedirectUri() {
+  const configuredRedirectUri = normalizeEnv(process.env.AUTH0_EXTENSION_REDIRECT_URI);
+  if (configuredRedirectUri) {
+    return configuredRedirectUri;
+  }
+
+  return AUTH0_EXTENSION_ID
+    ? `https://${AUTH0_EXTENSION_ID}.chromiumapp.org/callback`
+    : "";
 }
 
 function escapeHtml(value) {
@@ -474,56 +489,137 @@ function upsertLocalUser(email, password) {
 
 // Authentication routes
 app.get("/login/google", (req, res) => {
-  return res.redirect("/admin-login.html");
+  if (!hasFullAuthConfig) {
+    return res.status(503).send("Google authentication is not configured.");
+  }
+
+  return req.oidc.login({
+    returnTo: "/",
+    authorizationParams: {
+      connection: "google-oauth2",
+      scope: "openid profile email",
+    },
+  });
 });
 
 app.get("/signup", (req, res) => {
-  return res.redirect("/admin-login.html");
+  return res.redirect("/login.html");
 });
 
 app.get("/profile", (req, res) => {
-  return res.redirect("/admin-login.html");
+  return res.redirect("/");
 });
 
 app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
-  return res.redirect("/admin-login.html");
+  return res.redirect("/");
 });
 
 app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
-  return res.redirect("/admin-login.html");
+  return res.redirect("/");
 });
 
 app.post("/auth/local/signup", (req, res) => {
-  const { email, password } = req.body || {};
-  const result = upsertLocalUser(email, password);
-  if (!result.ok) {
-    return res.status(400).json({ error: result.message });
-  }
-
-  req.session.localUser = {
-    email: normalizeEmail(email),
-    name: normalizeEmail(email),
-  };
-  return res.json({ success: true });
+  return res.status(410).json({ error: "Google sign-in is required." });
 });
 
 app.post("/auth/local/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  const user = findUserByEmail(email);
-  if (!user || !user.passwordHash) {
-    return res.status(401).json({ error: "Invalid email or password." });
+  return res.status(410).json({ error: "Google sign-in is required." });
+});
+
+app.get("/api/auth/config", (req, res) => {
+  const extensionRedirectUri = getAuth0ExtensionRedirectUri();
+  if (!hasFullAuthConfig || !process.env.CLIENT_ID || !extensionRedirectUri) {
+    return res.status(503).json({ error: "Google authentication is not configured." });
   }
 
-  const isValid = await bcrypt.compare(typeof password === "string" ? password : "", user.passwordHash);
-  if (!isValid) {
-    return res.status(401).json({ error: "Invalid email or password." });
+  return res.json({
+    issuerBaseUrl: authEnv.issuerBaseURL,
+    clientId: authEnv.clientID,
+    extensionRedirectUri,
+  });
+});
+
+app.post("/api/auth/google-login", async (req, res) => {
+  const code = typeof (req.body && req.body.code) === "string" ? req.body.code.trim() : "";
+  const codeVerifier = typeof (req.body && req.body.codeVerifier) === "string"
+    ? req.body.codeVerifier.trim()
+    : "";
+  const redirectUri = typeof (req.body && req.body.redirectUri) === "string"
+    ? req.body.redirectUri.trim()
+    : "";
+  const expectedRedirectUri = getAuth0ExtensionRedirectUri();
+
+  if (!hasFullAuthConfig || !code || !codeVerifier || !redirectUri || redirectUri !== expectedRedirectUri) {
+    return res.status(400).json({ error: "Invalid Google sign-in request." });
   }
 
-  req.session.localUser = {
-    email: normalizeEmail(user.email),
-    name: normalizeEmail(user.email),
-  };
-  return res.json({ success: true });
+  try {
+    const tokenResponse = await fetch(`${authEnv.issuerBaseURL}/oauth/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: authEnv.clientID,
+        client_secret: authEnv.clientSecret,
+        code,
+        code_verifier: codeVerifier,
+        redirect_uri: redirectUri,
+      }),
+    });
+    const tokenData = await tokenResponse.json().catch(() => ({}));
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      return res.status(401).json({ error: "Google sign-in could not be completed." });
+    }
+
+    const profileResponse = await fetch(`${authEnv.issuerBaseURL}/userinfo`, {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const profile = await profileResponse.json().catch(() => ({}));
+    const email = normalizeEmail(profile.email);
+    if (!profileResponse.ok || !profile.sub || !isValidEmail(email) || profile.email_verified === false) {
+      return res.status(401).json({ error: "Google did not return a verified email address." });
+    }
+
+    const db = readDB();
+    db.users = Array.isArray(db.users) ? db.users : [];
+    let user = db.users.find((item) => item.auth0Subject === profile.sub);
+    if (!user) {
+      user = db.users.find((item) => normalizeEmail(item.email) === email);
+    }
+
+    if (!user) {
+      user = {
+        email,
+        provider: "google",
+        auth0Subject: profile.sub,
+        extensionToken: createExtensionToken(),
+        progress: sanitizeProgress({}),
+        createdAt: Date.now(),
+      };
+      db.users.push(user);
+    } else {
+      user.email = email;
+      user.provider = "google";
+      user.auth0Subject = profile.sub;
+      user.extensionToken = user.extensionToken || createExtensionToken();
+      user.progress = sanitizeProgress(user.progress || {});
+      user.updatedAt = Date.now();
+    }
+
+    // Google is the only user-facing login provider; old local password hashes are no longer used.
+    delete user.passwordHash;
+    clearPasswordResetFields(user);
+    writeDB(db);
+
+    return res.json({
+      token: user.extensionToken,
+      user: { email: user.email, name: profile.name || user.email },
+      progress: user.progress,
+    });
+  } catch (error) {
+    console.error("Google extension sign-in failed:", error.message);
+    return res.status(502).json({ error: "Google sign-in is temporarily unavailable." });
+  }
 });
 
 const passwordResetResponse = {
@@ -608,51 +704,11 @@ app.post("/api/auth/reset-password", (req, res) => {
 });
 
 app.post("/api/auth/signup", (req, res) => {
-  const { email, password } = req.body || {};
-  const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail || typeof password !== "string" || password.length < 8) {
-    return res.status(400).json({ error: "Use a valid email and an 8+ character password." });
-  }
-
-  const db = readDB();
-  db.users = Array.isArray(db.users) ? db.users : [];
-  if (db.users.some((user) => normalizeEmail(user.email) === normalizedEmail)) {
-    return res.status(409).json({ error: "That email already has an account." });
-  }
-
-  const user = {
-    email: normalizedEmail,
-    passwordHash: bcrypt.hashSync(password, 10),
-    provider: "extension",
-    extensionToken: createExtensionToken(),
-    progress: sanitizeProgress({}),
-    createdAt: Date.now(),
-  };
-  db.users.push(user);
-  writeDB(db);
-
-  res.json({ token: user.extensionToken, user: { email: user.email }, progress: user.progress });
+  return res.status(410).json({ error: "Google sign-in is required." });
 });
 
 app.post("/api/auth/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  const db = readDB();
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const user = db.users.find((item) => normalizeEmail(item.email) === normalizeEmail(email));
-  if (!user || !user.passwordHash) {
-    return res.status(401).json({ error: "Invalid email or password." });
-  }
-
-  const isValid = await bcrypt.compare(typeof password === "string" ? password : "", user.passwordHash);
-  if (!isValid) {
-    return res.status(401).json({ error: "Invalid email or password." });
-  }
-
-  user.extensionToken = user.extensionToken || createExtensionToken();
-  user.progress = sanitizeProgress(user.progress || {});
-  writeDB(db);
-
-  res.json({ token: user.extensionToken, user: { email: user.email }, progress: user.progress });
+  return res.status(410).json({ error: "Google sign-in is required." });
 });
 
 app.get("/api/auth/profile", requireExtensionUser, (req, res) => {
