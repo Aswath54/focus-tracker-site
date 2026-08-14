@@ -430,6 +430,7 @@ function sanitizeProgress(progress) {
     feedbackHistory: Array.isArray(source.feedbackHistory) ? source.feedbackHistory.slice(-100) : [],
     lockPassword: typeof source.lockPassword === "string" ? source.lockPassword : "",
     parentPassword: typeof source.parentPassword === "string" ? source.parentPassword : "",
+    parentEmail: typeof source.parentEmail === "string" ? source.parentEmail.trim().toLowerCase().slice(0, 254) : "",
     childLinked: Boolean(source.childLinked),
     focusMode: ["self", "parent", "child"].includes(source.focusMode) ? source.focusMode : "self",
     modeLocked: Boolean(source.modeLocked),

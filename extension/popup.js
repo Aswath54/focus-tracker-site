@@ -507,10 +507,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       chrome.runtime.sendMessage({
         type: "SET_PARENT_PASSWORD",
         parentPassword: parentPass,
-        focusMode
+        focusMode,
+        parentEmail: accountUser && accountUser.email ? accountUser.email : ""
       }, (response) => {
         if (response && response.success) {
           parentPassword = parentPass;
+          syncProgress();
           if (parentPasswordInput) parentPasswordInput.value = "";
           if (parentPasswordConfirm) parentPasswordConfirm.value = "";
           parentPasswordError.style.display = "none";
@@ -1401,6 +1403,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "feedbackHistory",
       "password",
       "parentPassword",
+      "parentEmail",
       "childLinked",
       "focusMode",
       "modeLocked",
@@ -1412,6 +1415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       feedbackHistory: result.feedbackHistory || [],
       lockPassword: result.password || "",
       parentPassword: result.parentPassword || "",
+      parentEmail: result.parentEmail || "",
       childLinked: !!result.childLinked,
       focusMode: result.focusMode || "self",
       modeLocked: !!result.modeLocked,
