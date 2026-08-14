@@ -1380,18 +1380,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderAccount() {
-    if (!accountForm || !accountStatusText || !btnAccountLogout) return;
+    if (!accountForm || !btnAccountLogout) return;
 
     if (accountToken && accountUser) {
       accountForm.style.display = "none";
       btnAccountLogout.style.display = "inline-flex";
-      accountStatusText.textContent = `Signed in as ${accountUser.email}. Progress sync is on.`;
+      if (accountStatusText) accountStatusText.textContent = `Signed in as ${accountUser.email}. Progress sync is on.`;
     } else {
       accountForm.style.display = "flex";
       btnAccountLogout.style.display = "none";
-      accountStatusText.textContent = childSyncUnlocked
-        ? "Child sync unlocked. You can log in to restore progress on this device."
-        : "Log in to restore your progress on another browser.";
     }
   }
 
