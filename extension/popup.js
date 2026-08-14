@@ -101,6 +101,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const customMinutesInput = document.getElementById("custom-minutes");
   const btnSetCustom = document.getElementById("btn-set-custom");
   const btnStartFocus = document.getElementById("btn-start-focus");
+  const selfSessionPassword = document.getElementById("self-session-password");
+  const selfSessionPasswordConfirm = document.getElementById("self-session-password-confirm");
   const parentPresetBtns = document.querySelectorAll(".parent-preset-btn");
   const parentCustomMinutesInput = document.getElementById("parent-custom-minutes");
   const btnParentSetCustom = document.getElementById("btn-parent-set-custom");
@@ -284,7 +286,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // 1. Password Check
-      if (!state.hasPassword) {
+      if (!state.hasPassword && !isChildMode && !isParentMode) {
+        if (secSetupPassword) secSetupPassword.style.display = "none";
+      } else if (!state.hasPassword) {
         if (focusModeSelect) {
           focusModeSelect.value = focusMode;
           updateFocusModeHelp();
@@ -667,12 +671,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Start focus session
   btnStartFocus.addEventListener("click", () => {
     if (focusMode === "parent") return;
+    const sessionPassword = selfSessionPassword ? selfSessionPassword.value : "";
+    const sessionPasswordConfirm = selfSessionPasswordConfirm ? selfSessionPasswordConfirm.value : "";
+    if (focusMode === "self" && (sessionPassword.length < 4 || sessionPassword !== sessionPasswordConfirm)) {
+      alert(sessionPassword.length < 4 ? "Create a temporary password with at least 4 characters." : "Temporary passwords do not match.");
+      return;
+    }
     chrome.runtime.sendMessage({
       type: "START_SESSION",
       durationSeconds: activeDurationSeconds,
-      allowedUrls: currentAllowedUrls
+      allowedUrls: currentAllowedUrls,
+      sessionPassword: focusMode === "self" ? sessionPassword : undefined
     }, (response) => {
       if (response && response.success) {
+        if (selfSessionPassword) selfSessionPassword.value = "";
+        if (selfSessionPasswordConfirm) selfSessionPasswordConfirm.value = "";
         refreshState();
       } else {
         alert(response.error || "Could not start session.");

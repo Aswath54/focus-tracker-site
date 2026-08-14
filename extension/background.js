@@ -367,6 +367,7 @@ async function ensureRemoteFocusSessionAlarm() {
 // Clean up and end focus session
 async function endFocusSession(notified = true, showFeedbackPrompt = true) {
   const sessionResult = await chrome.storage.local.get("activeSessionId");
+  const { focusMode } = await chrome.storage.local.get("focusMode");
   const feedbackPromptSessionId = sessionResult.activeSessionId || `session_${Date.now()}`;
 
   await chrome.storage.local.set({ 
@@ -377,7 +378,8 @@ async function endFocusSession(notified = true, showFeedbackPrompt = true) {
     remoteSessionId: null,
     showFeedbackPrompt,
     feedbackPromptDeferred: false,
-    feedbackPromptSessionId
+    feedbackPromptSessionId,
+    ...(focusMode === "self" ? { password: "" } : {})
   });
   await chrome.alarms.clear("focusTimer");
   await clearBlockingRules();
@@ -527,7 +529,12 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "START_SESSION") {
-      if (!state.hasPassword) {
+      if (state.focusMode === "self") {
+        if (typeof request.sessionPassword !== "string" || request.sessionPassword.length < 4) {
+          return { success: false, error: "Create a temporary session password with at least 4 characters." };
+        }
+        await chrome.storage.local.set({ password: request.sessionPassword });
+      } else if (!state.hasPassword) {
         return { success: false, error: "Please configure a lock password first." };
       }
       if (state.focusMode === "parent" && !state.childLinked) {
