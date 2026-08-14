@@ -78,6 +78,7 @@ async function getExtensionState() {
     "password",
     "parentPassword",
     "childLinked",
+    "childSyncUnlocked",
     "focusMode",
     "modeLocked",
     "accountToken",
@@ -91,6 +92,7 @@ async function getExtensionState() {
     hasPassword: !!result.password,
     hasParentPassword: !!result.parentPassword,
     childLinked: !!result.childLinked,
+    childSyncUnlocked: !!result.childSyncUnlocked,
     focusMode: result.focusMode || "self",
     modeLocked: !!result.modeLocked,
     hasAccount: !!(result.accountToken || result.accountUser)
@@ -334,6 +336,7 @@ async function handleMessages(request) {
       }
       await chrome.storage.local.set({
         childLinked: true,
+        childSyncUnlocked: true,
         modeLocked: true,
         parentEmail: storage.parentEmail || currentEmail
       });
@@ -453,6 +456,7 @@ async function handleMessages(request) {
         "focusMode",
         "modeLocked",
         "childLinked",
+        "childSyncUnlocked",
         "permanentFeedback"
       ]);
       const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
@@ -475,7 +479,8 @@ async function handleMessages(request) {
           ? progress.parentEmail.trim().toLowerCase()
           : (existing.parentEmail || ""),
         childLinked: !!existing.childLinked || !!progress.childLinked,
-        modeLocked: !!existing.modeLocked,
+        childSyncUnlocked: !!existing.childSyncUnlocked,
+        modeLocked: !!existing.childSyncUnlocked && !!existing.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken
           : typeof existing.accountToken === "string"
