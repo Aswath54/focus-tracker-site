@@ -173,7 +173,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function switchAccountContext(nextMode) {
     const current = accountSlot(focusMode);
     const next = accountSlot(nextMode);
-    await chrome.storage.local.set({ [current.token]: accountToken || "", [current.user]: accountUser || null });
+    if (accountToken && accountUser) {
+      await chrome.storage.local.set({ [current.token]: accountToken, [current.user]: accountUser });
+    }
     const saved = await chrome.storage.local.get([next.token, next.user]);
     accountToken = saved[next.token] || null;
     accountUser = saved[next.user] || null;
