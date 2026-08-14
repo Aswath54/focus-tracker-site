@@ -319,13 +319,19 @@ async function handleMessages(request) {
       const currentEmail = typeof currentUser.accountUser?.email === "string"
         ? currentUser.accountUser.email.trim().toLowerCase()
         : "";
-      if (!storage.parentPassword || storage.parentPassword !== request.parentPassword) {
+      if (!storage.parentPassword) {
+        return { success: false, error: "No parent password is synced to this device. Save it again in Parent mode." };
+      }
+      if (storage.parentPassword !== request.parentPassword) {
         return { success: false, error: "Incorrect parent password." };
       }
-      if (!storage.parentEmail || storage.parentEmail !== currentEmail) {
+      if (!currentEmail) {
+        return { success: false, error: "Sign in with Google before unlocking sync." };
+      }
+      if (storage.parentEmail && storage.parentEmail !== currentEmail) {
         return { success: false, error: "Log in with the parent account to unlock sync." };
       }
-      await chrome.storage.local.set({ childLinked: true });
+      await chrome.storage.local.set({ childLinked: true, parentEmail: storage.parentEmail || currentEmail });
       return { success: true };
     }
     
