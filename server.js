@@ -427,6 +427,9 @@ function sanitizeProgress(progress) {
             timestamp: Number(item.timestamp) || Date.now(),
           }))
       : [],
+    historyGroups: Array.isArray(source.historyGroups)
+      ? [...new Set(source.historyGroups.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim().slice(0, 32)))].slice(0, 30)
+      : [],
     feedbackHistory: Array.isArray(source.feedbackHistory) ? source.feedbackHistory.slice(-100) : [],
     lockPassword: typeof source.lockPassword === "string" ? source.lockPassword : "",
     parentPassword: typeof source.parentPassword === "string" ? source.parentPassword : "",

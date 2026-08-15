@@ -1550,6 +1550,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return Boolean(
       (Array.isArray(progress.allowedUrls) && progress.allowedUrls.length > 0) ||
       (Array.isArray(progress.whitelistHistory) && progress.whitelistHistory.length > 0) ||
+      (Array.isArray(progress.historyGroups) && progress.historyGroups.length > 0) ||
       (Array.isArray(progress.feedbackHistory) && progress.feedbackHistory.length > 0) ||
       (typeof progress.lockPassword === "string" && progress.lockPassword.length > 0) ||
       (typeof progress.parentPassword === "string" && progress.parentPassword.length > 0) ||
@@ -1571,6 +1572,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const result = await chrome.storage.local.get([
       "allowedUrls",
       "whitelistHistory",
+      "historyGroups",
       "feedbackHistory",
       "password",
       "parentPassword",
@@ -1583,6 +1585,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return {
       allowedUrls: result.allowedUrls || [],
       whitelistHistory: result.whitelistHistory || [],
+      historyGroups: result.historyGroups || [],
       feedbackHistory: result.feedbackHistory || [],
       lockPassword: result.password || "",
       parentPassword: result.parentPassword || "",

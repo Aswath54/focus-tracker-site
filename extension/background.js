@@ -639,6 +639,7 @@ async function handleMessages(request) {
         "accountToken",
         "allowedUrls",
         "whitelistHistory",
+        "historyGroups",
         "feedbackHistory",
         "password",
         "parentPassword",
@@ -651,6 +652,7 @@ async function handleMessages(request) {
       ]);
       const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
       const remoteWhitelistHistory = Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [];
+      const remoteHistoryGroups = Array.isArray(progress.historyGroups) ? progress.historyGroups : [];
       const remoteFeedbackHistory = Array.isArray(progress.feedbackHistory) ? progress.feedbackHistory : [];
       const remotePermanentFeedback = progress.permanentFeedback && typeof progress.permanentFeedback === "object"
         ? progress.permanentFeedback
@@ -658,6 +660,7 @@ async function handleMessages(request) {
       await chrome.storage.local.set({
         allowedUrls: remoteAllowedUrls.length ? remoteAllowedUrls : (existing.allowedUrls || []),
         whitelistHistory: remoteWhitelistHistory.length ? remoteWhitelistHistory : (existing.whitelistHistory || []),
+        historyGroups: remoteHistoryGroups.length ? remoteHistoryGroups : (existing.historyGroups || []),
         feedbackHistory: remoteFeedbackHistory.length ? remoteFeedbackHistory : (existing.feedbackHistory || []),
         password: typeof progress.lockPassword === "string" && progress.lockPassword
           ? progress.lockPassword
