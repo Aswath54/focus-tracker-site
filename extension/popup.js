@@ -1,6 +1,7 @@
 // AuraFocus Popup Logic (popup.js)
 const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
-const HISTORY_GROUPS = ["School", "Work", "Personal", "Other"];
+const HISTORY_GROUPS = ["School", "Work", "Personal"];
+const CREATE_GROUP_OPTION = "__create_group__";
 const HISTORY_GROUP_DOMAINS = {
   School: [
     "wikipedia.org", "khanacademy.org", "coursera.org", "edx.org", "quizlet.com",
@@ -178,6 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     thumb: null,
     comments: ""
   };
+  let historyGroups = [...HISTORY_GROUPS];
 
   // Initialize view
   setupPasswordToggles();
@@ -894,10 +896,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const historySearch = document.getElementById("history-search");
 
   function getHistoryGroup(domain, savedGroup) {
-    if (HISTORY_GROUPS.includes(savedGroup)) return savedGroup;
+    if (historyGroups.includes(savedGroup)) return savedGroup;
 
     const hostname = domain.toLowerCase().replace(/^www\./, "");
-    for (const group of ["School", "Work", "Personal"]) {
+    for (const group of HISTORY_GROUPS) {
       if (HISTORY_GROUP_DOMAINS[group].some(groupDomain =>
         hostname === groupDomain || hostname.endsWith(`.${groupDomain}`)
       )) {
@@ -905,7 +907,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    return "Other";
+    return historyGroups[0] || "Personal";
   }
 
   if (btnParentStopFocus) {
@@ -968,7 +970,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function updateHistoryGroup(domain, group) {
-    if (!HISTORY_GROUPS.includes(group)) return;
+    if (!historyGroups.includes(group)) return;
 
     const result = await chrome.storage.local.get("whitelistHistory");
     const history = result.whitelistHistory || [];
@@ -983,6 +985,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function renderHistory(filterText = "") {
     if (!historyList) return;
     historyList.innerHTML = "";
+
+    const groupState = await chrome.storage.local.get("historyGroups");
+    const savedGroups = Array.isArray(groupState.historyGroups)
+      ? groupState.historyGroups.filter(group => typeof group === "string" && group.trim()).slice(0, 30)
+      : [];
+    historyGroups = [...new Set([...HISTORY_GROUPS, ...savedGroups])];
 
     const result = await chrome.storage.local.get("whitelistHistory");
     let history = result.whitelistHistory || [];
@@ -1022,7 +1030,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
 
-    const groupedHistory = HISTORY_GROUPS.map(group => ({
+    const groupedHistory = historyGroups.map(group => ({
       group,
       items: filteredHistory.filter(item => getHistoryGroup(item.domain, item.group) === group)
     })).filter(section => section.items.length > 0);
@@ -1048,14 +1056,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         const groupSelect = document.createElement("select");
         groupSelect.className = "history-group-select";
         groupSelect.setAttribute("aria-label", `Group for ${item.domain}`);
-        HISTORY_GROUPS.forEach(optionGroup => {
+        historyGroups.forEach(optionGroup => {
           const option = document.createElement("option");
           option.value = optionGroup;
           option.textContent = optionGroup;
           option.selected = optionGroup === getHistoryGroup(item.domain, item.group);
           groupSelect.appendChild(option);
         });
+        const createOption = document.createElement("option");
+        createOption.value = CREATE_GROUP_OPTION;
+        createOption.textContent = "Create New Group";
+        groupSelect.appendChild(createOption);
         groupSelect.addEventListener("change", () => {
+          if (groupSelect.value === CREATE_GROUP_OPTION) {
+            const name = prompt("Enter a name for the new group:", "New Group");
+            const cleanName = typeof name === "string" ? name.trim().slice(0, 32) : "";
+            if (!cleanName || historyGroups.includes(cleanName)) {
+              groupSelect.value = getHistoryGroup(item.domain, item.group);
+              return;
+            }
+            historyGroups.push(cleanName);
+            chrome.storage.local.set({ historyGroups });
+            updateHistoryGroup(item.domain, cleanName);
+            return;
+          }
           updateHistoryGroup(item.domain, groupSelect.value);
         });
 
