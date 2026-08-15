@@ -245,7 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = isChildMode ? "none" : "block";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && hasSignedInAccount && !childLinked ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
@@ -323,7 +323,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secFeedback) secFeedback.style.display = "none";
             if (secWhitelist) secWhitelist.style.display = "none";
             if (secChangePassword) secChangePassword.style.display = "none";
-            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount ? "block" : "none";
+            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && !childLinked ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
             if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked ? "block" : "none";
             updateParentTimerControls();
@@ -459,7 +459,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       if (parentControlPanel) {
-        parentControlPanel.style.display = focusMode === "parent" ? "block" : "none";
+        parentControlPanel.style.display = focusMode === "parent" && !childLinked ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked && !!(accountToken && accountUser) ? "block" : "none";
