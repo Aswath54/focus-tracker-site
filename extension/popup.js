@@ -166,13 +166,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   let accountToken = null;
   let accountUser = null;
   let focusMode = "self";
-  let accountContextVersion = 0;
   function accountSlot(mode) {
     return mode === "self" ? { token: "selfAccountToken", user: "selfAccountUser" } : { token: "accountToken", user: "accountUser" };
   }
 
   async function switchAccountContext(nextMode) {
-    accountContextVersion += 1;
     const current = accountSlot(focusMode);
     const next = accountSlot(nextMode);
     if (accountToken && accountUser) {
@@ -207,7 +205,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
-    const refreshVersion = accountContextVersion;
     chrome.runtime.sendMessage({ type: "GET_STATE" }, async (response) => {
       if (chrome.runtime.lastError || !response || !response.success) {
         console.error("Could not fetch state from background service.");
@@ -219,7 +216,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       focusMode = state.focusMode || focusMode;
       const accountStateSlot = accountSlot(focusMode);
       const accountState = await chrome.storage.local.get([accountStateSlot.token, accountStateSlot.user]);
-      if (refreshVersion !== accountContextVersion) return;
       accountToken = accountState[accountStateSlot.token] || null;
       accountUser = accountState[accountStateSlot.user] || null;
       await chrome.storage.local.set({ accountToken: accountToken || "", accountUser: accountUser || null });
