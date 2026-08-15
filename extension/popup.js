@@ -108,6 +108,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentCustomMinutesInput = document.getElementById("parent-custom-minutes");
   const btnParentSetCustom = document.getElementById("btn-parent-set-custom");
   const btnParentStartFocus = document.getElementById("btn-parent-start-focus");
+  const parentSessionPassword = document.getElementById("parent-session-password");
+  const parentSessionPasswordConfirm = document.getElementById("parent-session-password-confirm");
   const parentStopPassword = document.getElementById("parent-stop-password");
   const btnParentStopFocus = document.getElementById("btn-parent-stop-focus");
   const parentStopError = document.getElementById("parent-stop-error");
@@ -240,7 +242,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const sessionFeedbackPending = !!state.showFeedbackPrompt && !!state.feedbackPromptSessionId;
         secPermanentFeedback.style.display = accountRequired || isChildMode || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
       }
-      secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block";
+      secWhitelist.style.display = isChildMode ? "none" : "block";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
         parentControlPanel.style.display = isParentMode && hasSignedInAccount ? "block" : "none";
@@ -308,7 +310,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.storage.local.get(["showFeedbackPrompt", "feedbackPromptSessionId"], (feedbackState) => {
           if (feedbackState.showFeedbackPrompt && feedbackState.feedbackPromptSessionId) {
             showSection(secFeedback);
-            if (secWhitelist) secWhitelist.style.display = "none";
+            if (secWhitelist) secWhitelist.style.display = "block";
             if (secChangePassword) secChangePassword.style.display = "none";
             if (parentControlPanel) parentControlPanel.style.display = "none";
             if (parentTimerPanel) parentTimerPanel.style.display = "none";
@@ -362,7 +364,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
               showSection(secIdleSession);
               updateStatus(false, "Idle");
-              secWhitelist.style.display = showParentOnlyPanels ? "none" : isChildMode ? "none" : "block"; // Restore whitelist
+              secWhitelist.style.display = isChildMode ? "none" : "block"; // Restore whitelist
               secChangePassword.style.display = "none";
             }
           });
@@ -702,12 +704,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         alert("Link a child first by completing child sync before starting a parent session.");
         return;
       }
+      const sessionPassword = parentSessionPassword ? parentSessionPassword.value : "";
+      const sessionPasswordConfirm = parentSessionPasswordConfirm ? parentSessionPasswordConfirm.value : "";
+      if (sessionPassword.length < 4 || sessionPassword !== sessionPasswordConfirm) {
+        alert(sessionPassword.length < 4 ? "Create a temporary session password with at least 4 characters." : "Temporary passwords do not match.");
+        return;
+      }
       chrome.runtime.sendMessage({
         type: "START_SESSION",
         durationSeconds: parentDurationSeconds,
-        allowedUrls: currentAllowedUrls
+        allowedUrls: currentAllowedUrls,
+        sessionPassword
       }, (response) => {
         if (response && response.success) {
+          if (parentSessionPassword) parentSessionPassword.value = "";
+          if (parentSessionPasswordConfirm) parentSessionPasswordConfirm.value = "";
           refreshState();
         } else {
           alert(response.error || "Could not start child session.");
@@ -915,7 +926,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (focusMode !== "parent") return;
       const password = parentStopPassword ? parentStopPassword.value : "";
       if (!password) {
-        showError(parentStopError, "Sync password required.");
+        showError(parentStopError, "Temporary session password required.");
         return;
       }
       chrome.runtime.sendMessage({ type: "STOP_SESSION", password }, (response) => {

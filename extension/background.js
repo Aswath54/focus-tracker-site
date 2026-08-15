@@ -379,7 +379,8 @@ async function endFocusSession(notified = true, showFeedbackPrompt = true) {
     showFeedbackPrompt,
     feedbackPromptDeferred: false,
     feedbackPromptSessionId,
-    ...(focusMode === "self" ? { password: "" } : {})
+    ...(focusMode === "self" ? { password: "" } : {}),
+    ...(focusMode === "parent" ? { parentSessionPassword: "" } : {})
   });
   await chrome.alarms.clear("focusTimer");
   await clearBlockingRules();
@@ -534,6 +535,10 @@ async function handleMessages(request) {
           return { success: false, error: "Create a temporary session password with at least 4 characters." };
         }
         await chrome.storage.local.set({ password: request.sessionPassword });
+      } else if (state.focusMode === "parent") {
+        if (typeof request.sessionPassword !== "string" || request.sessionPassword.length < 4) {
+          return { success: false, error: "Create a temporary session password with at least 4 characters." };
+        }
       } else if (!state.hasPassword) {
         return { success: false, error: "Please configure a lock password first." };
       }
@@ -556,6 +561,7 @@ async function handleMessages(request) {
         if (!remoteResult.success) {
           return remoteResult;
         }
+        await chrome.storage.local.set({ parentSessionPassword: request.sessionPassword });
         return { success: true, sessionEndTime: remoteResult.session.endTime, remote: true };
       }
 
@@ -572,11 +578,11 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "STOP_SESSION") {
-      const storage = await chrome.storage.local.get(["password", "parentPassword", "focusMode"]);
+      const storage = await chrome.storage.local.get(["password", "parentPassword", "parentSessionPassword", "focusMode"]);
       if (storage.focusMode === "child") {
         return { success: false, error: "Only Parent mode can stop a locked session." };
       }
-      const controlPassword = storage.focusMode === "parent" ? storage.parentPassword : storage.password;
+      const controlPassword = storage.focusMode === "parent" ? storage.parentSessionPassword : storage.password;
       if (!controlPassword || controlPassword !== request.password) {
         return { success: false, error: "Incorrect password. Stay focused!" };
       }
