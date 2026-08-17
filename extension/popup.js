@@ -1036,8 +1036,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       await chrome.storage.local.set({ whitelistHistory: history });
     }
 
-    // Keep current and previously allowed sites visible in history.
-    let filteredHistory = history;
+    // Previously allowed means sites that are no longer on the active whitelist.
+    const currentDomains = new Set(currentAllowedUrls.map(domain => domain.toLowerCase()));
+    let filteredHistory = history.filter(item =>
+      !currentDomains.has(String(item.domain || "").toLowerCase())
+    );
 
     // Filter by search text if any
     if (filterText) {
