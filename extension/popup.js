@@ -129,7 +129,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityPie = document.getElementById("session-activity-pie");
   const sessionActivityLegend = document.getElementById("session-activity-legend");
   const sessionActivityLabel = document.getElementById("session-activity-label");
-  const sessionActivityDownload = document.getElementById("session-activity-download");
   const sessionActivityImageDownload = document.getElementById("session-activity-image-download");
   const groupActivityPie = document.getElementById("group-activity-pie");
   const groupActivityLegend = document.getElementById("group-activity-legend");
@@ -138,7 +137,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
   const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
-  const parentSessionActivityDownload = document.getElementById("parent-session-activity-download");
   const parentSessionActivityImageDownload = document.getElementById("parent-session-activity-image-download");
   const parentGroupActivityPie = document.getElementById("parent-group-activity-pie");
   const parentGroupActivityLegend = document.getElementById("parent-group-activity-legend");
@@ -1594,12 +1592,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  if (sessionActivityDownload) {
-    sessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
-  }
-  if (parentSessionActivityDownload) {
-    parentSessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
-  }
   if (sessionActivityImageDownload) {
     sessionActivityImageDownload.addEventListener("click", () => downloadSessionActivityImage());
   }
