@@ -1054,11 +1054,6 @@ input:focus {
   white-space: nowrap;
 }
 
-.blocked-site-activity-duration {
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
 /* Feedback Section styles */
 .feedback-thumbs-row {
   display: flex;

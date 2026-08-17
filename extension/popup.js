@@ -1301,11 +1301,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!list) return;
     const entries = Object.entries(activity || {})
       .filter(([domain, milliseconds]) => domain.startsWith("blocked:") && Number(milliseconds) > 0)
-      .map(([domain, milliseconds]) => ({
-        domain: domain.slice(8),
-        milliseconds: Number(milliseconds)
-      }))
-      .sort((a, b) => b.milliseconds - a.milliseconds);
+      .map(([domain]) => domain.slice(8))
+      .sort((a, b) => a.localeCompare(b));
 
     list.innerHTML = "";
     if (entries.length === 0) {
@@ -1322,15 +1319,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const domain = document.createElement("span");
       domain.className = "blocked-site-activity-domain";
-      domain.textContent = item.domain;
-      domain.title = item.domain;
-
-      const duration = document.createElement("span");
-      duration.className = "blocked-site-activity-duration";
-      duration.textContent = formatActivityDuration(item.milliseconds);
+      domain.textContent = item;
+      domain.title = item;
 
       row.appendChild(domain);
-      row.appendChild(duration);
       list.appendChild(row);
     });
   }
