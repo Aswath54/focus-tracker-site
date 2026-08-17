@@ -106,6 +106,19 @@
           <div id="parent-stop-error" class="error-msg" style="display: none;"></div>
         </section>
 
+        <section id="parent-session-activity-panel" class="card" style="display: none; margin-top: 12px;">
+          <div class="activity-header">
+            <h3>Child Session Activity</h3>
+            <span id="parent-session-activity-label">Last child session</span>
+          </div>
+          <div class="session-activity-chart-wrap">
+            <div id="parent-session-activity-pie" class="session-activity-pie" role="img" aria-label="No child website activity recorded yet"></div>
+            <div id="parent-session-activity-legend" class="session-activity-legend">
+              <div class="session-activity-empty">No child website activity recorded yet.</div>
+            </div>
+          </div>
+        </section>
+
         <form id="account-form" class="form-group" novalidate>
           <button id="btn-account-google" class="btn btn-primary" type="button">Continue with Google</button>
           <div id="account-error" class="error-msg" style="display: none;"></div>

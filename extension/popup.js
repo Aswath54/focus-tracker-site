@@ -128,6 +128,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityPie = document.getElementById("session-activity-pie");
   const sessionActivityLegend = document.getElementById("session-activity-legend");
   const sessionActivityLabel = document.getElementById("session-activity-label");
+  const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
+  const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
+  const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
+  const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -239,6 +243,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
+      if (parentSessionActivityPanel) {
+        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked ? "block" : "none";
+      }
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
         focusModeSelect.disabled = modeLocked;
@@ -273,6 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (parentControlPanel) parentControlPanel.style.display = "none";
         if (childSyncPanel) childSyncPanel.style.display = "none";
         if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        if (parentSessionActivityPanel) parentSessionActivityPanel.style.display = "none";
         stopLocalCountdown();
         if (whitelistLockOverlay) whitelistLockOverlay.style.display = "none";
         if (whitelistUnlockInputContainer) whitelistUnlockInputContainer.style.display = "none";
@@ -290,6 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (secPermanentFeedback) secPermanentFeedback.style.display = "none";
         if (parentControlPanel) parentControlPanel.style.display = "none";
         if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        if (parentSessionActivityPanel) parentSessionActivityPanel.style.display = "none";
         if (childSyncPanel) childSyncPanel.style.display = "block";
         stopLocalCountdown();
         if (whitelistLockOverlay) whitelistLockOverlay.style.display = "none";
@@ -323,6 +332,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secChangePassword) secChangePassword.style.display = "none";
             if (parentControlPanel) parentControlPanel.style.display = "none";
             if (parentTimerPanel) parentTimerPanel.style.display = "none";
+            if (parentSessionActivityPanel) parentSessionActivityPanel.style.display = "none";
             updateStatus(false, "Feedback");
           } else {
             showSection(null);
@@ -461,6 +471,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (parentControlPanel) parentControlPanel.style.display = "none";
         if (childSyncPanel) childSyncPanel.style.display = "none";
         if (parentTimerPanel) parentTimerPanel.style.display = "none";
+        if (parentSessionActivityPanel) parentSessionActivityPanel.style.display = "none";
         stopLocalCountdown();
         if (whitelistLockOverlay) whitelistLockOverlay.style.display = "none";
         if (whitelistUnlockInputContainer) whitelistUnlockInputContainer.style.display = "none";
@@ -1165,8 +1176,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
   }
 
-  function renderSessionActivity(activity, isActive) {
-    if (!sessionActivityPie || !sessionActivityLegend) return;
+  function renderActivityChart(pie, legend, label, activity, isActive, parentView = false) {
+    if (!pie || !legend) return;
 
     const entries = Object.entries(activity || {})
       .map(([domain, milliseconds]) => ({
@@ -1177,14 +1188,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       .sort((a, b) => b.milliseconds - a.milliseconds);
 
     const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
-    if (sessionActivityLabel) {
-      sessionActivityLabel.textContent = isActive ? "Current focus session" : "Last focus session";
+    if (label) {
+      label.textContent = isActive
+        ? (parentView ? "Current child session" : "Current focus session")
+        : (parentView ? "Last child session" : "Last focus session");
     }
 
     if (!totalMilliseconds) {
-      sessionActivityPie.style.background = "var(--bg-dark-3)";
-      sessionActivityPie.setAttribute("aria-label", "No website activity recorded yet");
-      sessionActivityLegend.innerHTML = "<div class=\"session-activity-empty\">No website activity recorded yet.</div>";
+      pie.style.background = "var(--bg-dark-3)";
+      pie.setAttribute("aria-label", parentView ? "No child website activity recorded yet" : "No website activity recorded yet");
+      legend.innerHTML = `<div class="session-activity-empty">${parentView ? "No child website activity recorded yet." : "No website activity recorded yet."}</div>`;
       return;
     }
 
@@ -1207,9 +1220,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentDegree = nextDegree;
     });
 
-    sessionActivityPie.style.background = `conic-gradient(${gradientSegments.join(", ")})`;
-    sessionActivityPie.setAttribute("aria-label", ariaParts.join(", "));
-    sessionActivityLegend.innerHTML = "";
+    pie.style.background = `conic-gradient(${gradientSegments.join(", ")})`;
+    pie.setAttribute("aria-label", ariaParts.join(", "));
+    legend.innerHTML = "";
 
     visibleEntries.forEach((item, index) => {
       const row = document.createElement("div");
@@ -1231,14 +1244,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       row.appendChild(swatch);
       row.appendChild(domain);
       row.appendChild(duration);
-      sessionActivityLegend.appendChild(row);
+      legend.appendChild(row);
     });
   }
 
   function refreshSessionActivity() {
     chrome.runtime.sendMessage({ type: "GET_SESSION_ACTIVITY" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.success) return;
-      renderSessionActivity(response.activity, response.isActive);
+      renderActivityChart(
+        sessionActivityPie,
+        sessionActivityLegend,
+        sessionActivityLabel,
+        response.activity,
+        response.isActive,
+        false
+      );
+      renderActivityChart(
+        parentSessionActivityPie,
+        parentSessionActivityLegend,
+        parentSessionActivityLabel,
+        response.activity,
+        response.isActive,
+        !!response.isParentView
+      );
     });
   }
 

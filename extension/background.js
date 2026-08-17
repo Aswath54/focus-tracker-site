@@ -473,6 +473,32 @@ async function stopRemoteFocusSession() {
   };
 }
 
+async function publishRemoteFocusActivity() {
+  const local = await chrome.storage.local.get([
+    "accountToken",
+    "focusMode",
+    "isFocusActive",
+    "remoteSessionId"
+  ]);
+  if (
+    !local.accountToken ||
+    local.focusMode !== "child" ||
+    !local.isFocusActive ||
+    !local.remoteSessionId
+  ) {
+    return { skipped: true };
+  }
+
+  const activity = await flushActiveSiteActivity();
+  return requestRemoteFocusSession("/api/focus-session/activity", {
+    method: "POST",
+    body: {
+      sessionId: local.remoteSessionId,
+      activity
+    }
+  });
+}
+
 async function syncRemoteFocusSession() {
   const local = await chrome.storage.local.get([
     "accountToken",
@@ -484,6 +510,8 @@ async function syncRemoteFocusSession() {
   if (!local.accountToken) {
     return { success: true, skipped: true };
   }
+
+  await publishRemoteFocusActivity();
 
   const result = await requestRemoteFocusSession("/api/focus-session");
   if (result.skipped || !result.ok) {
@@ -523,6 +551,7 @@ async function ensureRemoteFocusSessionAlarm() {
 
 // Clean up and end focus session
 async function endFocusSession(notified = true, showFeedbackPrompt = true) {
+  await publishRemoteFocusActivity();
   await finishSiteActivityTracking();
   const sessionResult = await chrome.storage.local.get("activeSessionId");
   const { focusMode } = await chrome.storage.local.get("focusMode");
@@ -673,6 +702,22 @@ async function handleMessages(request) {
     }
 
     if (request.type === "GET_SESSION_ACTIVITY") {
+      const localMode = await chrome.storage.local.get(["focusMode", "accountToken"]);
+      if (localMode.focusMode === "parent" && localMode.accountToken) {
+        const remoteResult = await requestRemoteFocusSession("/api/focus-session");
+        if (remoteResult.ok && remoteResult.data) {
+          return {
+            success: true,
+            isActive: !!remoteResult.data.active,
+            isParentView: true,
+            sessionId: remoteResult.data.session?.sessionId || null,
+            activity: normalizeSiteActivity(
+              remoteResult.data.session?.activity || remoteResult.data.activity
+            )
+          };
+        }
+      }
+
       await refreshActiveSiteTracking();
       const activeActivity = await flushActiveSiteActivity();
       const activityState = await chrome.storage.local.get([
@@ -685,6 +730,7 @@ async function handleMessages(request) {
       return {
         success: true,
         isActive,
+        isParentView: false,
         sessionId: isActive
           ? activityState.activeSessionId || null
           : activityState.lastSessionActivitySessionId || null,

@@ -467,7 +467,23 @@ function sanitizeFocusSession(session) {
     allowedUrls: Array.isArray(source.allowedUrls)
       ? source.allowedUrls.filter((item) => typeof item === "string").slice(0, 200)
       : [],
+    activity: sanitizeSessionActivity(source.activity),
   };
+}
+
+function sanitizeSessionActivity(activity) {
+  if (!activity || typeof activity !== "object" || Array.isArray(activity)) return {};
+
+  return Object.entries(activity)
+    .slice(0, 100)
+    .reduce((cleaned, [domain, milliseconds]) => {
+      if (typeof domain !== "string" || !domain.trim()) return cleaned;
+      const duration = Number(milliseconds);
+      if (Number.isFinite(duration) && duration > 0) {
+        cleaned[domain.trim().slice(0, 160)] = Math.min(duration, 1000 * 60 * 60 * 24);
+      }
+      return cleaned;
+    }, {});
 }
 
 function requireExtensionUser(req, res, next) {
@@ -792,6 +808,7 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
 
   const session = sanitizeFocusSession(user.activeFocusSession);
   if (!session && user.activeFocusSession) {
+    user.lastFocusActivity = sanitizeSessionActivity(user.activeFocusSession.activity);
     delete user.activeFocusSession;
     user.updatedAt = Date.now();
     writeDB(db);
@@ -799,8 +816,28 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
   return res.json({
     active: Boolean(session),
     session,
+    activity: session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity),
     childLinked: Boolean(user.progress && user.progress.childLinked),
   });
+});
+
+app.post("/api/focus-session/activity", requireExtensionUser, (req, res) => {
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (!session || session.sessionId !== req.body?.sessionId) {
+    return res.status(409).json({ error: "No matching focus session is active." });
+  }
+
+  user.activeFocusSession.activity = sanitizeSessionActivity(req.body?.activity);
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true });
 });
 
 app.post("/api/focus-session/start", requireExtensionUser, (req, res) => {
@@ -837,7 +874,9 @@ app.post("/api/focus-session/start", requireExtensionUser, (req, res) => {
     allowedUrls: Array.isArray(req.body.allowedUrls)
       ? req.body.allowedUrls.filter((item) => typeof item === "string").slice(0, 200)
       : [],
+    activity: {},
   };
+  user.lastFocusActivity = {};
   user.activeFocusSession = focusSession;
   user.updatedAt = startedAt;
   writeDB(db);
@@ -856,6 +895,8 @@ app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  user.lastFocusActivity = session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity);
   delete user.activeFocusSession;
   user.updatedAt = Date.now();
   writeDB(db);
