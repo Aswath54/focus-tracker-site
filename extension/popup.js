@@ -130,11 +130,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityLegend = document.getElementById("session-activity-legend");
   const sessionActivityLabel = document.getElementById("session-activity-label");
   const sessionActivityDownload = document.getElementById("session-activity-download");
+  const sessionActivityImageDownload = document.getElementById("session-activity-image-download");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
   const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
   const parentSessionActivityDownload = document.getElementById("parent-session-activity-download");
+  const parentSessionActivityImageDownload = document.getElementById("parent-session-activity-image-download");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -1458,6 +1460,91 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
   }
 
+  function downloadSessionActivityImage() {
+    const entries = getPdfActivityEntries(latestSessionActivity);
+    const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
+    const chartEntries = entries.slice(0, 6);
+    if (entries.length > chartEntries.length) {
+      chartEntries.push({
+        domain: "Other sites",
+        milliseconds: entries.slice(6).reduce((total, item) => total + item.milliseconds, 0)
+      });
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1000;
+    canvas.height = 620;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.fillStyle = "#0b0d14";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#f7b928";
+    context.font = "800 28px Arial";
+    context.fillText("AURAFOCUS SESSION ANALYTICS", 42, 52);
+    context.fillStyle = "#a4a8b5";
+    context.font = "16px Arial";
+    context.fillText(
+      `${latestSessionActivityIsParentView ? "Child session" : "Focus session"} - ${latestSessionActivityIsActive ? "In progress" : "Last completed session"}`,
+      42,
+      82
+    );
+
+    const centerX = 245;
+    const centerY = 330;
+    const radius = 165;
+    if (totalMilliseconds > 0) {
+      let currentAngle = -Math.PI / 2;
+      chartEntries.forEach((item, index) => {
+        const sliceAngle = (item.milliseconds / totalMilliseconds) * Math.PI * 2;
+        context.beginPath();
+        context.moveTo(centerX, centerY);
+        context.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        context.closePath();
+        context.fillStyle = sessionActivityColors[index % sessionActivityColors.length];
+        context.fill();
+        currentAngle += sliceAngle;
+      });
+
+      context.beginPath();
+      context.arc(centerX, centerY, 52, 0, Math.PI * 2);
+      context.fillStyle = "#0b0d14";
+      context.fill();
+
+      context.font = "700 18px Arial";
+      let legendY = 180;
+      chartEntries.forEach((item, index) => {
+        const percentage = Math.round((item.milliseconds / totalMilliseconds) * 100);
+        context.fillStyle = sessionActivityColors[index % sessionActivityColors.length];
+        context.fillRect(500, legendY - 14, 14, 14);
+        context.fillStyle = "#f2f3f7";
+        context.fillText(item.domain, 526, legendY);
+        context.fillStyle = "#a4a8b5";
+        context.font = "15px Arial";
+        context.fillText(`${formatActivityDuration(item.milliseconds)} (${percentage}%)`, 526, legendY + 22);
+        context.font = "700 18px Arial";
+        legendY += 65;
+      });
+    } else {
+      context.fillStyle = "#a4a8b5";
+      context.font = "18px Arial";
+      context.fillText("No website activity recorded yet.", 500, 300);
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const imageUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = imageUrl;
+      link.download = `aurafocus-session-chart-${date}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+    }, "image/png");
+  }
+
   function refreshSessionActivity() {
     chrome.runtime.sendMessage({ type: "GET_SESSION_ACTIVITY" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.success) return;
@@ -1491,6 +1578,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   if (parentSessionActivityDownload) {
     parentSessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
+  }
+  if (sessionActivityImageDownload) {
+    sessionActivityImageDownload.addEventListener("click", downloadSessionActivityImage);
+  }
+  if (parentSessionActivityImageDownload) {
+    parentSessionActivityImageDownload.addEventListener("click", downloadSessionActivityImage);
   }
 
   // --- PASSWORD VISIBILITY TOGGLE ---
