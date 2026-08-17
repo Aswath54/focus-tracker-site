@@ -204,6 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     comments: ""
   };
   let historyGroups = [...HISTORY_GROUPS];
+  const historyGroupAssignments = new Map();
 
   // Initialize view
   setupPasswordToggles();
@@ -963,10 +964,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   const historySearch = document.getElementById("history-search");
   let historyRenderVersion = 0;
 
+  function normalizeHistoryDomain(domain) {
+    return String(domain || "").trim().toLowerCase().replace(/^www\./, "");
+  }
+
   function getHistoryGroup(domain, savedGroup) {
     if (historyGroups.includes(savedGroup)) return savedGroup;
 
-    const hostname = domain.toLowerCase().replace(/^www\./, "");
+    const hostname = normalizeHistoryDomain(domain);
     for (const group of HISTORY_GROUPS) {
       if (HISTORY_GROUP_DOMAINS[group].some(groupDomain =>
         hostname === groupDomain || hostname.endsWith(`.${groupDomain}`)
@@ -1025,7 +1030,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     await chrome.storage.local.set({ whitelistHistory: history });
+    historyGroupAssignments.set(normalizeHistoryDomain(domain), getHistoryGroup(domain));
     renderHistory(historySearch ? historySearch.value.trim() : "");
+    refreshSessionActivity();
   }
 
   async function addSiteDirectly(domain) {
@@ -1050,7 +1057,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     item.group = group;
     await chrome.storage.local.set({ whitelistHistory: history });
+    historyGroupAssignments.set(normalizeHistoryDomain(domain), group);
     renderHistory(historySearch ? historySearch.value.trim() : "");
+    refreshSessionActivity();
   }
 
   async function renderHistory(filterText = "") {
@@ -1096,6 +1105,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       history = [...missingCurrentSites, ...history];
       await chrome.storage.local.set({ whitelistHistory: history });
     }
+
+    historyGroupAssignments.clear();
+    history.forEach(item => {
+      const domain = normalizeHistoryDomain(item.domain);
+      if (domain && historyGroups.includes(item.group)) {
+        historyGroupAssignments.set(domain, item.group);
+      }
+    });
 
     // Previously allowed means sites that are no longer on the active whitelist.
     const currentDomains = new Set(currentAllowedUrls.map(domain => domain.toLowerCase()));
@@ -1291,7 +1308,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (domain.startsWith("blocked:")) return groupActivity;
       const duration = Number(milliseconds);
       if (!Number.isFinite(duration) || duration <= 0) return groupActivity;
-      const group = getHistoryGroup(domain);
+      const savedGroup = historyGroupAssignments.get(normalizeHistoryDomain(domain));
+      const group = getHistoryGroup(domain, savedGroup);
       groupActivity[group] = (Number(groupActivity[group]) || 0) + duration;
       return groupActivity;
     }, {});
