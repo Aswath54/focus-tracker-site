@@ -1472,27 +1472,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const canvas = document.createElement("canvas");
-    canvas.width = 1000;
-    canvas.height = 620;
+    canvas.width = 500;
+    canvas.height = 500;
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    context.fillStyle = "#0b0d14";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#f7b928";
-    context.font = "800 28px Arial";
-    context.fillText("AURAFOCUS SESSION ANALYTICS", 42, 52);
-    context.fillStyle = "#a4a8b5";
-    context.font = "16px Arial";
-    context.fillText(
-      `${latestSessionActivityIsParentView ? "Child session" : "Focus session"} - ${latestSessionActivityIsActive ? "In progress" : "Last completed session"}`,
-      42,
-      82
-    );
-
-    const centerX = 245;
-    const centerY = 330;
-    const radius = 165;
+    const centerX = 250;
+    const centerY = 250;
+    const radius = 220;
     if (totalMilliseconds > 0) {
       let currentAngle = -Math.PI / 2;
       chartEntries.forEach((item, index) => {
@@ -1505,31 +1492,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         context.fill();
         currentAngle += sliceAngle;
       });
-
-      context.beginPath();
-      context.arc(centerX, centerY, 52, 0, Math.PI * 2);
-      context.fillStyle = "#0b0d14";
-      context.fill();
-
-      context.font = "700 18px Arial";
-      let legendY = 180;
-      chartEntries.forEach((item, index) => {
-        const percentage = Math.round((item.milliseconds / totalMilliseconds) * 100);
-        context.fillStyle = sessionActivityColors[index % sessionActivityColors.length];
-        context.fillRect(500, legendY - 14, 14, 14);
-        context.fillStyle = "#f2f3f7";
-        context.fillText(item.domain, 526, legendY);
-        context.fillStyle = "#a4a8b5";
-        context.font = "15px Arial";
-        context.fillText(`${formatActivityDuration(item.milliseconds)} (${percentage}%)`, 526, legendY + 22);
-        context.font = "700 18px Arial";
-        legendY += 65;
-      });
-    } else {
-      context.fillStyle = "#a4a8b5";
-      context.font = "18px Arial";
-      context.fillText("No website activity recorded yet.", 500, 300);
     }
+
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.strokeStyle = "rgba(255, 255, 255, 0.28)";
+    context.lineWidth = 2;
+    context.stroke();
 
     canvas.toBlob((blob) => {
       if (!blob) return;
