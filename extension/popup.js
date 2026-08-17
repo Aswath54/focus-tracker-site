@@ -112,6 +112,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentSessionPasswordConfirm = document.getElementById("parent-session-password-confirm");
   const parentStopPassword = document.getElementById("parent-stop-password");
   const btnParentStopFocus = document.getElementById("btn-parent-stop-focus");
+  const parentStopControls = document.getElementById("parent-stop-controls");
   const parentStopError = document.getElementById("parent-stop-error");
   const parentLinkNote = document.getElementById("parent-link-note");
   
@@ -425,6 +426,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     if (parentCustomMinutesInput) parentCustomMinutesInput.disabled = !canStartParentSession;
     if (btnParentSetCustom) btnParentSetCustom.disabled = !canStartParentSession;
+  }
+
+  function updateParentStopControls(isActive) {
+    if (parentStopControls) {
+      parentStopControls.style.display = isActive ? "flex" : "none";
+    }
+    if (!isActive && parentStopPassword) {
+      parentStopPassword.value = "";
+    }
   }
 
   if (focusModeSelect) {
@@ -752,6 +762,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (parentSessionPassword) parentSessionPassword.value = "";
           if (parentSessionPasswordConfirm) parentSessionPasswordConfirm.value = "";
           refreshState();
+          refreshSessionActivity();
         } else {
           alert(response.error || "Could not start child session.");
         }
@@ -967,6 +978,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (parentStopPassword) parentStopPassword.value = "";
           if (parentStopError) parentStopError.style.display = "none";
           refreshState();
+          refreshSessionActivity();
         } else {
           showError(parentStopError, response?.error || "Could not stop child session.");
         }
@@ -1279,6 +1291,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         response.isActive,
         !!response.isParentView
       );
+      if (response.isParentView) {
+        updateParentStopControls(response.isActive);
+      }
     });
   }
 
