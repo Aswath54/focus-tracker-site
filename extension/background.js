@@ -809,6 +809,9 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "START_SESSION") {
+      if (state.focusMode === "child" && (!state.childSyncUnlocked || !state.childLinked)) {
+        return { success: false, error: "Complete Child Sync before setting a focus timer." };
+      }
       if (state.focusMode === "self") {
         if (typeof request.sessionPassword !== "string" || request.sessionPassword.length < 4) {
           return { success: false, error: "Create a temporary session password with at least 4 characters." };

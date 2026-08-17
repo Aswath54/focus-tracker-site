@@ -651,7 +651,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   presetBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) return;
+      if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) return;
       presetBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activeDurationSeconds = parseInt(btn.dataset.seconds, 10);
@@ -662,7 +662,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnSetCustom.addEventListener("click", () => {
-    if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) return;
+    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) return;
     const mins = parseInt(customMinutesInput.value, 10);
     if (isNaN(mins) || mins < 1) {
       customMinutesInput.value = 1;
@@ -680,7 +680,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start focus session
   btnStartFocus.addEventListener("click", () => {
-    if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) {
+    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) {
       if (focusMode === "child") {
         alert("Complete Child Sync before setting a focus timer.");
       }
@@ -709,7 +709,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   function updateChildTimerControls() {
-    const timerEnabled = focusMode !== "child" || childSyncUnlocked;
+    const timerEnabled = focusMode !== "child" || (childSyncUnlocked && childLinked);
     presetBtns.forEach(button => {
       button.disabled = !timerEnabled;
     });
