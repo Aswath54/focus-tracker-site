@@ -905,6 +905,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // --- WHITELIST HISTORY & SEARCH ---
   const historyList = document.getElementById("history-list");
   const historySearch = document.getElementById("history-search");
+  let historyRenderVersion = 0;
 
   function getHistoryGroup(domain, savedGroup) {
     if (historyGroups.includes(savedGroup)) return savedGroup;
@@ -997,15 +998,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function renderHistory(filterText = "") {
     if (!historyList) return;
-    historyList.innerHTML = "";
+    const renderVersion = ++historyRenderVersion;
 
     const groupState = await chrome.storage.local.get("historyGroups");
+    if (renderVersion !== historyRenderVersion) return;
     const savedGroups = Array.isArray(groupState.historyGroups)
       ? groupState.historyGroups.filter(group => typeof group === "string" && group.trim()).slice(0, 30)
       : [];
     historyGroups = [...new Set([...HISTORY_GROUPS, ...savedGroups])];
 
     const result = await chrome.storage.local.get("whitelistHistory");
+    if (renderVersion !== historyRenderVersion) return;
     let history = result.whitelistHistory || [];
 
     // Keep one history entry per domain, preserving the newest entry.
@@ -1019,6 +1022,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     if (history.length !== originalHistoryLength) {
       await chrome.storage.local.set({ whitelistHistory: history });
+      if (renderVersion !== historyRenderVersion) return;
     }
 
     // Backfill sites that were whitelisted before history tracking was added.
@@ -1047,6 +1051,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       const lowerFilter = filterText.toLowerCase();
       filteredHistory = filteredHistory.filter(item => item.domain.includes(lowerFilter));
     }
+
+    if (renderVersion !== historyRenderVersion) return;
+    historyList.innerHTML = "";
 
     if (filteredHistory.length === 0) {
       const emptyLi = document.createElement("li");
