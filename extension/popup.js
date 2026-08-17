@@ -133,6 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityImageDownload = document.getElementById("session-activity-image-download");
   const groupActivityPie = document.getElementById("group-activity-pie");
   const groupActivityLegend = document.getElementById("group-activity-legend");
+  const groupActivityImageDownload = document.getElementById("group-activity-image-download");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
@@ -141,6 +142,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentSessionActivityImageDownload = document.getElementById("parent-session-activity-image-download");
   const parentGroupActivityPie = document.getElementById("parent-group-activity-pie");
   const parentGroupActivityLegend = document.getElementById("parent-group-activity-legend");
+  const parentGroupActivityImageDownload = document.getElementById("parent-group-activity-image-download");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -1473,8 +1475,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
   }
 
-  function downloadSessionActivityImage() {
-    const entries = getPdfActivityEntries(latestSessionActivity);
+  function downloadSessionActivityImage(activity = latestSessionActivity, filenamePrefix = "session-chart") {
+    const entries = getPdfActivityEntries(activity);
     const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
     const chartEntries = entries.slice(0, 6);
     if (entries.length > chartEntries.length) {
@@ -1535,12 +1537,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       const link = document.createElement("a");
       const date = new Date().toISOString().slice(0, 10);
       link.href = imageUrl;
-      link.download = `aurafocus-session-chart-${date}.png`;
+      link.download = `aurafocus-${filenamePrefix}-${date}.png`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
     }, "image/png");
+  }
+
+  function downloadGroupActivityImage() {
+    downloadSessionActivityImage(buildGroupActivity(latestSessionActivity), "group-chart");
   }
 
   function refreshSessionActivity() {
@@ -1595,10 +1601,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     parentSessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
   }
   if (sessionActivityImageDownload) {
-    sessionActivityImageDownload.addEventListener("click", downloadSessionActivityImage);
+    sessionActivityImageDownload.addEventListener("click", () => downloadSessionActivityImage());
   }
   if (parentSessionActivityImageDownload) {
-    parentSessionActivityImageDownload.addEventListener("click", downloadSessionActivityImage);
+    parentSessionActivityImageDownload.addEventListener("click", () => downloadSessionActivityImage());
+  }
+  if (groupActivityImageDownload) {
+    groupActivityImageDownload.addEventListener("click", downloadGroupActivityImage);
+  }
+  if (parentGroupActivityImageDownload) {
+    parentGroupActivityImageDownload.addEventListener("click", downloadGroupActivityImage);
   }
 
   // --- PASSWORD VISIBILITY TOGGLE ---
