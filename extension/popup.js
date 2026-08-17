@@ -245,7 +245,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
       if (parentSessionActivityPanel) {
-        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked ? "block" : "none";
+        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked && hasParentPassword ? "block" : "none";
       }
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
@@ -262,13 +262,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = isChildMode ? "none" : "block";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && hasSignedInAccount && !childLinked ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && hasSignedInAccount && childLinked;
+        const showParentTimer = isParentMode && hasSignedInAccount && childLinked && hasParentPassword;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
       updateParentTimerControls();
@@ -328,9 +328,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secFeedback) secFeedback.style.display = "none";
             if (secWhitelist) secWhitelist.style.display = "none";
             if (secChangePassword) secChangePassword.style.display = "none";
-            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && !childLinked ? "block" : "none";
+            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !hasParentPassword) ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
-            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked ? "block" : "none";
+            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked && hasParentPassword ? "block" : "none";
             updateParentTimerControls();
             updateStatus(false, "Parent");
           }
@@ -465,13 +465,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       if (parentControlPanel) {
-        parentControlPanel.style.display = focusMode === "parent" && !childLinked ? "block" : "none";
+        parentControlPanel.style.display = focusMode === "parent" && (!childLinked || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
         childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked && !!(accountToken && accountUser) ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked && hasParentPassword ? "block" : "none";
       }
       updateParentTimerControls();
     });
@@ -609,6 +609,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             showError(parentPasswordError, `Parent password saved locally, but could not sync: ${syncResult.error}`);
             return;
           }
+          refreshState();
           if (parentPasswordSuccess) {
             parentPasswordSuccess.style.display = "block";
             setTimeout(() => parentPasswordSuccess.style.display = "none", 2500);
