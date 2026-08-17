@@ -125,6 +125,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnAddSite = document.getElementById("btn-add-site");
   const whitelistList = document.getElementById("whitelist-list");
   const whitelistActionError = document.getElementById("whitelist-action-error");
+  const sessionActivityPie = document.getElementById("session-activity-pie");
+  const sessionActivityLegend = document.getElementById("session-activity-legend");
+  const sessionActivityLabel = document.getElementById("session-activity-label");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -189,8 +192,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSessionFeedbackState();
   await loadPermanentFeedback();
   await refreshState();
+  refreshSessionActivity();
+  const sessionActivityInterval = setInterval(refreshSessionActivity, 5000);
   feedbackUserId = await getOrCreateFeedbackUserId();
   bindPermanentFeedbackControls();
+
+  window.addEventListener("unload", () => {
+    clearInterval(sessionActivityInterval);
+  });
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
@@ -1135,6 +1144,104 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  const sessionActivityColors = [
+    "#f7b928",
+    "#4dd8ff",
+    "#b779ff",
+    "#57e389",
+    "#ff7f66",
+    "#ff65b3",
+    "#8d9eff"
+  ];
+
+  function formatActivityDuration(milliseconds) {
+    const totalSeconds = Math.max(1, Math.round(Number(milliseconds) / 1000));
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  }
+
+  function renderSessionActivity(activity, isActive) {
+    if (!sessionActivityPie || !sessionActivityLegend) return;
+
+    const entries = Object.entries(activity || {})
+      .map(([domain, milliseconds]) => ({
+        domain,
+        milliseconds: Number(milliseconds)
+      }))
+      .filter(item => item.domain && Number.isFinite(item.milliseconds) && item.milliseconds > 0)
+      .sort((a, b) => b.milliseconds - a.milliseconds);
+
+    const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
+    if (sessionActivityLabel) {
+      sessionActivityLabel.textContent = isActive ? "Current focus session" : "Last focus session";
+    }
+
+    if (!totalMilliseconds) {
+      sessionActivityPie.style.background = "var(--bg-dark-3)";
+      sessionActivityPie.setAttribute("aria-label", "No website activity recorded yet");
+      sessionActivityLegend.innerHTML = "<div class=\"session-activity-empty\">No website activity recorded yet.</div>";
+      return;
+    }
+
+    const visibleEntries = entries.slice(0, 6);
+    if (entries.length > visibleEntries.length) {
+      visibleEntries.push({
+        domain: "Other sites",
+        milliseconds: entries.slice(6).reduce((total, item) => total + item.milliseconds, 0)
+      });
+    }
+
+    let currentDegree = 0;
+    const gradientSegments = [];
+    const ariaParts = [];
+    visibleEntries.forEach((item, index) => {
+      const nextDegree = currentDegree + (item.milliseconds / totalMilliseconds) * 360;
+      const color = sessionActivityColors[index % sessionActivityColors.length];
+      gradientSegments.push(`${color} ${currentDegree}deg ${nextDegree}deg`);
+      ariaParts.push(`${item.domain}: ${formatActivityDuration(item.milliseconds)}`);
+      currentDegree = nextDegree;
+    });
+
+    sessionActivityPie.style.background = `conic-gradient(${gradientSegments.join(", ")})`;
+    sessionActivityPie.setAttribute("aria-label", ariaParts.join(", "));
+    sessionActivityLegend.innerHTML = "";
+
+    visibleEntries.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "session-activity-legend-row";
+
+      const swatch = document.createElement("span");
+      swatch.className = "session-activity-swatch";
+      swatch.style.backgroundColor = sessionActivityColors[index % sessionActivityColors.length];
+
+      const domain = document.createElement("span");
+      domain.className = "session-activity-domain";
+      domain.textContent = item.domain;
+      domain.title = item.domain;
+
+      const duration = document.createElement("span");
+      duration.className = "session-activity-duration";
+      duration.textContent = formatActivityDuration(item.milliseconds);
+
+      row.appendChild(swatch);
+      row.appendChild(domain);
+      row.appendChild(duration);
+      sessionActivityLegend.appendChild(row);
+    });
+  }
+
+  function refreshSessionActivity() {
+    chrome.runtime.sendMessage({ type: "GET_SESSION_ACTIVITY" }, (response) => {
+      if (chrome.runtime.lastError || !response || !response.success) return;
+      renderSessionActivity(response.activity, response.isActive);
+    });
+  }
+
   // --- PASSWORD VISIBILITY TOGGLE ---
   function setupPasswordToggles() {
     document.querySelectorAll(".toggle-password-btn").forEach(btn => {
@@ -1386,6 +1493,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (message.type === "SESSION_ENDED") {
       isWhitelistUnlocked = false;
       refreshState();
+      refreshSessionActivity();
     }
   });
 

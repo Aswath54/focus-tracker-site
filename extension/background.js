@@ -4,6 +4,145 @@ const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railw
 const REMOTE_FOCUS_SESSION_ALARM = "remote-focus-session-sync";
 const REMOTE_FOCUS_SESSION_PERIOD_MINUTES = 0.5;
 
+// Site activity is tracked only for the active browser tab while a focus
+// session is running. The timestamps and accumulated durations are persisted
+// so tracking survives service-worker restarts.
+let siteActivityOperation = Promise.resolve();
+
+function withSiteActivityLock(operation) {
+  const nextOperation = siteActivityOperation.then(operation, operation);
+  siteActivityOperation = nextOperation.catch(() => {});
+  return nextOperation;
+}
+
+function getTrackableDomain(tab) {
+  try {
+    const url = new URL(tab && tab.url ? tab.url : "");
+    if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+    return url.hostname.toLowerCase().replace(/^www\./, "");
+  } catch (error) {
+    return "";
+  }
+}
+
+function normalizeSiteActivity(activity) {
+  if (!activity || typeof activity !== "object" || Array.isArray(activity)) return {};
+
+  return Object.entries(activity).reduce((normalized, [domain, milliseconds]) => {
+    const duration = Number(milliseconds);
+    if (domain && Number.isFinite(duration) && duration > 0) {
+      normalized[domain] = duration;
+    }
+    return normalized;
+  }, {});
+}
+
+function addElapsedSiteActivity(activity, domain, startedAt, now) {
+  const start = Number(startedAt);
+  if (!domain || !Number.isFinite(start) || start <= 0) return;
+
+  const elapsed = Math.max(0, now - start);
+  if (elapsed > 0) {
+    activity[domain] = (Number(activity[domain]) || 0) + elapsed;
+  }
+}
+
+async function getActiveWebTab() {
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tabs.find((tab) => getTrackableDomain(tab)) || null;
+}
+
+async function refreshActiveSiteTracking() {
+  return withSiteActivityLock(async () => {
+    const state = await chrome.storage.local.get([
+      "isFocusActive",
+      "sessionEndTime",
+      "sessionSiteActivity",
+      "activityTabId",
+      "activityDomain",
+      "activityStartedAt"
+    ]);
+    if (!state.isFocusActive || (state.sessionEndTime && Date.now() >= state.sessionEndTime)) {
+      return normalizeSiteActivity(state.sessionSiteActivity);
+    }
+
+    const activeTab = await getActiveWebTab();
+    const nextDomain = getTrackableDomain(activeTab);
+    const now = Date.now();
+    const activity = normalizeSiteActivity(state.sessionSiteActivity);
+    const previousDomain = typeof state.activityDomain === "string" ? state.activityDomain : "";
+    const previousStartedAt = Number(state.activityStartedAt);
+
+    if (previousDomain && previousDomain !== nextDomain) {
+      addElapsedSiteActivity(activity, previousDomain, previousStartedAt, now);
+    }
+
+    await chrome.storage.local.set({
+      sessionSiteActivity: activity,
+      activityTabId: nextDomain && activeTab ? activeTab.id : null,
+      activityDomain: nextDomain,
+      activityStartedAt: nextDomain
+        ? (previousDomain === nextDomain && previousStartedAt > 0 ? previousStartedAt : now)
+        : 0
+    });
+
+    return activity;
+  });
+}
+
+async function flushActiveSiteActivity() {
+  return withSiteActivityLock(async () => {
+    const state = await chrome.storage.local.get([
+      "isFocusActive",
+      "sessionSiteActivity",
+      "activityDomain",
+      "activityStartedAt"
+    ]);
+    const activity = normalizeSiteActivity(state.sessionSiteActivity);
+    const now = Date.now();
+
+    if (state.isFocusActive) {
+      addElapsedSiteActivity(activity, state.activityDomain, state.activityStartedAt, now);
+      await chrome.storage.local.set({
+        sessionSiteActivity: activity,
+        activityStartedAt: state.activityDomain ? now : 0
+      });
+    }
+
+    return activity;
+  });
+}
+
+async function finishSiteActivityTracking() {
+  return withSiteActivityLock(async () => {
+    const state = await chrome.storage.local.get([
+      "isFocusActive",
+      "activeSessionId",
+      "sessionSiteActivity",
+      "activityDomain",
+      "activityStartedAt"
+    ]);
+    const activity = normalizeSiteActivity(state.sessionSiteActivity);
+    const now = Date.now();
+
+    if (state.isFocusActive) {
+      addElapsedSiteActivity(activity, state.activityDomain, state.activityStartedAt, now);
+    }
+
+    await chrome.storage.local.set({
+      lastSessionSiteActivity: activity,
+      lastSessionActivitySessionId: state.activeSessionId || null,
+      lastSessionActivityEndedAt: now,
+      sessionSiteActivity: {},
+      activityTabId: null,
+      activityDomain: "",
+      activityStartedAt: 0
+    });
+
+    return activity;
+  });
+}
+
 const EDUCATIONAL_DOMAINS = [
   "wikipedia.org",
   "khanacademy.org",
@@ -274,6 +413,10 @@ async function applyLocalFocusSession(session, remote = false) {
     sessionEndTime: endTime,
     allowedUrls,
     activeSessionId: sessionId,
+    sessionSiteActivity: {},
+    activityTabId: null,
+    activityDomain: "",
+    activityStartedAt: 0,
     remoteSessionId: remote ? sessionId : null,
     showFeedbackPrompt: false,
     feedbackPromptDeferred: false,
@@ -282,6 +425,7 @@ async function applyLocalFocusSession(session, remote = false) {
   await chrome.alarms.create("focusTimer", { when: endTime });
   await updateBlockingRules(allowedUrls);
   await redirectActiveBlockedTabs(allowedUrls);
+  await refreshActiveSiteTracking();
   return true;
 }
 
@@ -366,6 +510,7 @@ async function ensureRemoteFocusSessionAlarm() {
 
 // Clean up and end focus session
 async function endFocusSession(notified = true, showFeedbackPrompt = true) {
+  await finishSiteActivityTracking();
   const sessionResult = await chrome.storage.local.get("activeSessionId");
   const { focusMode } = await chrome.storage.local.get("focusMode");
   const feedbackPromptSessionId = sessionResult.activeSessionId || `session_${Date.now()}`;
@@ -444,11 +589,58 @@ async function initializeExtension() {
   await ensureRemoteFocusSessionAlarm();
   await refreshBlockingRules();
   await syncRemoteFocusSession();
+  await refreshActiveSiteTracking();
 }
 
 chrome.runtime.onStartup.addListener(initializeExtension);
 chrome.runtime.onInstalled.addListener(initializeExtension);
 ensureRemoteFocusSessionAlarm();
+
+chrome.tabs.onActivated.addListener(() => {
+  refreshActiveSiteTracking().catch((error) => {
+    console.warn("Could not update site activity after tab activation:", error.message);
+  });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!changeInfo.url || !tab.active) return;
+  refreshActiveSiteTracking().catch((error) => {
+    console.warn("Could not update site activity after navigation:", error.message);
+  });
+});
+
+chrome.tabs.onRemoved.addListener(() => {
+  refreshActiveSiteTracking().catch((error) => {
+    console.warn("Could not update site activity after tab removal:", error.message);
+  });
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  const update = windowId === chrome.windows.WINDOW_ID_NONE
+    ? withSiteActivityLock(async () => {
+        const state = await chrome.storage.local.get([
+          "isFocusActive",
+          "sessionSiteActivity",
+          "activityDomain",
+          "activityStartedAt"
+        ]);
+        if (!state.isFocusActive) return;
+
+        const activity = normalizeSiteActivity(state.sessionSiteActivity);
+        addElapsedSiteActivity(activity, state.activityDomain, state.activityStartedAt, Date.now());
+        await chrome.storage.local.set({
+          sessionSiteActivity: activity,
+          activityTabId: null,
+          activityDomain: "",
+          activityStartedAt: 0
+        });
+      })
+    : refreshActiveSiteTracking();
+
+  update.catch((error) => {
+    console.warn("Could not update site activity after window focus change:", error.message);
+  });
+});
 
 // Message Handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -465,6 +657,28 @@ async function handleMessages(request) {
     if (request.type === "GET_STATE") {
       await syncRemoteFocusSession();
       return { success: true, state: await getExtensionState() };
+    }
+
+    if (request.type === "GET_SESSION_ACTIVITY") {
+      await refreshActiveSiteTracking();
+      const activeActivity = await flushActiveSiteActivity();
+      const activityState = await chrome.storage.local.get([
+        "isFocusActive",
+        "activeSessionId",
+        "lastSessionSiteActivity",
+        "lastSessionActivitySessionId"
+      ]);
+      const isActive = !!activityState.isFocusActive;
+      return {
+        success: true,
+        isActive,
+        sessionId: isActive
+          ? activityState.activeSessionId || null
+          : activityState.lastSessionActivitySessionId || null,
+        activity: isActive
+          ? activeActivity
+          : normalizeSiteActivity(activityState.lastSessionSiteActivity)
+      };
     }
 
     const state = await getExtensionState();
@@ -565,8 +779,11 @@ async function handleMessages(request) {
         return { success: true, sessionEndTime: remoteResult.session.endTime, remote: true };
       }
 
-      if (state.isFocusActive && Date.now() < state.sessionEndTime) {
-        return { success: false, error: "Focus session is already running." };
+      if (state.isFocusActive) {
+        if (Date.now() < state.sessionEndTime) {
+          return { success: false, error: "Focus session is already running." };
+        }
+        await endFocusSession(false, false);
       }
 
       const endTime = Date.now() + durationSec * 1000;
