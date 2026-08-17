@@ -131,12 +131,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityLabel = document.getElementById("session-activity-label");
   const sessionActivityDownload = document.getElementById("session-activity-download");
   const sessionActivityImageDownload = document.getElementById("session-activity-image-download");
+  const groupActivityPie = document.getElementById("group-activity-pie");
+  const groupActivityLegend = document.getElementById("group-activity-legend");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
   const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
   const parentSessionActivityDownload = document.getElementById("parent-session-activity-download");
   const parentSessionActivityImageDownload = document.getElementById("parent-session-activity-image-download");
+  const parentGroupActivityPie = document.getElementById("parent-group-activity-pie");
+  const parentGroupActivityLegend = document.getElementById("parent-group-activity-legend");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -1279,6 +1283,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function buildGroupActivity(activity) {
+    return Object.entries(activity || {}).reduce((groupActivity, [domain, milliseconds]) => {
+      const cleanDomain = domain.startsWith("blocked:") ? domain.slice(8) : domain;
+      const group = getHistoryGroup(cleanDomain);
+      groupActivity[group] = (Number(groupActivity[group]) || 0) + Number(milliseconds || 0);
+      return groupActivity;
+    }, {});
+  }
+
   function pdfEscape(value) {
     return String(value || "")
       .replace(/[^\x20-\x7E]/g, "?")
@@ -1549,6 +1562,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentSessionActivityLegend,
         parentSessionActivityLabel,
         response.activity,
+        response.isActive,
+        !!response.isParentView
+      );
+      const groupActivity = buildGroupActivity(response.activity);
+      renderActivityChart(
+        groupActivityPie,
+        groupActivityLegend,
+        null,
+        groupActivity,
+        response.isActive,
+        false
+      );
+      renderActivityChart(
+        parentGroupActivityPie,
+        parentGroupActivityLegend,
+        null,
+        groupActivity,
         response.isActive,
         !!response.isParentView
       );

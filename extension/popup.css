@@ -1010,6 +1010,12 @@ input:focus {
   margin-top: 10px;
 }
 
+.session-group-activity {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
 /* Feedback Section styles */
 .feedback-thumbs-row {
   display: flex;
