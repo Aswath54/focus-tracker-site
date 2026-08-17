@@ -181,6 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let childSyncUnlocked = false;
   let modeLocked = false;
   let childLinked = false;
+  let childSyncCompletedAt = 0;
   let parentDurationSeconds = 1500;
   let hasSubmittedSessionFeedback = false;
   let permanentFeedback = {
@@ -220,6 +221,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       hasParentPassword = !!state.hasParentPassword;
       childSyncUnlocked = !!state.childSyncUnlocked;
       childLinked = !!state.childLinked;
+      childSyncCompletedAt = Number(state.childSyncCompletedAt) || 0;
       // Older builds stored only modeLocked, which could hide the sync form
       // before this device had actually verified the parent password.
       if (modeLocked && !childSyncUnlocked) {
@@ -245,7 +247,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
       if (parentSessionActivityPanel) {
-        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked && hasParentPassword ? "block" : "none";
+        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
       }
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
@@ -262,13 +264,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = isChildMode ? "none" : "block";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !hasParentPassword) ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && !childSyncUnlocked ? "block" : "none";
+        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && (!childSyncUnlocked || !childSyncCompletedAt) ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && hasSignedInAccount && childLinked && hasParentPassword;
+        const showParentTimer = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
       updateParentTimerControls();
@@ -292,7 +294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // A child device has only one available action until the parent
       // password has been verified. Keep the sync form visible even if the
       // local lock password has not been configured yet.
-      if (isChildMode && !childSyncUnlocked) {
+      if (isChildMode && (!childSyncUnlocked || !childSyncCompletedAt)) {
         showSection(null);
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
@@ -328,9 +330,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secFeedback) secFeedback.style.display = "none";
             if (secWhitelist) secWhitelist.style.display = "none";
             if (secChangePassword) secChangePassword.style.display = "none";
-            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !hasParentPassword) ? "block" : "none";
+            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
-            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked && hasParentPassword ? "block" : "none";
+            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
             updateParentTimerControls();
             updateStatus(false, "Parent");
           }
@@ -401,7 +403,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateParentTimerControls() {
-    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked && hasParentPassword;
+    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked && !!childSyncCompletedAt && hasParentPassword;
     if (parentLinkNote) {
       if (canStartParentSession) {
         parentLinkNote.style.display = "none";
@@ -465,13 +467,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       if (parentControlPanel) {
-        parentControlPanel.style.display = focusMode === "parent" && (!childLinked || !hasParentPassword) ? "block" : "none";
+        parentControlPanel.style.display = focusMode === "parent" && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = focusMode === "child" && !childSyncUnlocked && !!(accountToken && accountUser) ? "block" : "none";
+        childSyncPanel.style.display = focusMode === "child" && (!childSyncUnlocked || !childSyncCompletedAt) && !!(accountToken && accountUser) ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked && hasParentPassword ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
       }
       updateParentTimerControls();
     });
@@ -499,6 +501,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           childSyncUnlocked = true;
           modeLocked = true;
           childLinked = true;
+          childSyncCompletedAt = Date.now();
           if (childSyncPassword) childSyncPassword.value = "";
           childSyncError.style.display = "none";
           if (childSyncSuccess) {
@@ -509,7 +512,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (focusModeSelect) {
             focusModeSelect.disabled = true;
           }
-          await chrome.storage.local.set({ modeLocked: true, childLinked: true, childSyncUnlocked: true });
+          await chrome.storage.local.set({
+            modeLocked: true,
+            childLinked: true,
+            childSyncUnlocked: true,
+            childSyncCompletedAt
+          });
           updateFocusModeHelp();
           renderAccount();
           await syncProgress();
@@ -652,7 +660,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   presetBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) return;
+      if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt))) return;
       presetBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activeDurationSeconds = parseInt(btn.dataset.seconds, 10);
@@ -663,7 +671,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnSetCustom.addEventListener("click", () => {
-    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) return;
+    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt))) return;
     const mins = parseInt(customMinutesInput.value, 10);
     if (isNaN(mins) || mins < 1) {
       customMinutesInput.value = 1;
@@ -681,7 +689,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start focus session
   btnStartFocus.addEventListener("click", () => {
-    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked))) {
+    if (focusMode === "parent" || (focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt))) {
       if (focusMode === "child") {
         alert("Complete Child Sync before setting a focus timer.");
       }
@@ -710,7 +718,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   function updateChildTimerControls() {
-    const timerEnabled = focusMode !== "child" || (childSyncUnlocked && childLinked);
+    const timerEnabled = focusMode !== "child" || (childSyncUnlocked && childLinked && childSyncCompletedAt);
     presetBtns.forEach(button => {
       button.disabled = !timerEnabled;
     });
@@ -724,7 +732,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnParentStartFocus) {
     btnParentStartFocus.addEventListener("click", () => {
       if (focusMode !== "parent") return;
-      if (!childLinked) {
+      if (!childLinked || !childSyncCompletedAt) {
         alert("Link a child first by completing child sync before starting a parent session.");
         return;
       }
@@ -1754,6 +1762,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       "parentPassword",
       "parentEmail",
       "childLinked",
+      "childSyncCompletedAt",
       "focusMode",
       "modeLocked",
       "permanentFeedback"
@@ -1767,6 +1776,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       parentPassword: result.parentPassword || "",
       parentEmail: result.parentEmail || "",
       childLinked: !!result.childLinked,
+      childSyncCompletedAt: Number(result.childSyncCompletedAt) || 0,
       focusMode: result.focusMode || "self",
       modeLocked: !!result.modeLocked,
       permanentFeedback: result.permanentFeedback || permanentFeedback

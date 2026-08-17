@@ -435,6 +435,7 @@ function sanitizeProgress(progress) {
     parentPassword: typeof source.parentPassword === "string" ? source.parentPassword : "",
     parentEmail: typeof source.parentEmail === "string" ? source.parentEmail.trim().toLowerCase().slice(0, 254) : "",
     childLinked: Boolean(source.childLinked),
+    childSyncCompletedAt: Number(source.childSyncCompletedAt) || 0,
     focusMode: ["self", "parent", "child"].includes(source.focusMode) ? source.focusMode : "self",
     modeLocked: Boolean(source.modeLocked),
     permanentFeedback:
@@ -792,7 +793,12 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  user.progress = sanitizeProgress(req.body && req.body.progress);
+  const previousSyncCompletedAt = Number(user.progress && user.progress.childSyncCompletedAt) || 0;
+  const incomingProgress = req.body && req.body.progress;
+  user.progress = sanitizeProgress(incomingProgress);
+  if (!(Number(incomingProgress && incomingProgress.childSyncCompletedAt) > 0)) {
+    user.progress.childSyncCompletedAt = previousSyncCompletedAt;
+  }
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
@@ -818,6 +824,7 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
     session,
     activity: session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity),
     childLinked: Boolean(user.progress && user.progress.childLinked),
+    childSyncCompletedAt: Number(user.progress && user.progress.childSyncCompletedAt) || 0,
   });
 });
 

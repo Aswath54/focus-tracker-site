@@ -235,6 +235,7 @@ async function getExtensionState() {
     "parentPassword",
     "childLinked",
     "childSyncUnlocked",
+    "childSyncCompletedAt",
     "focusMode",
     "modeLocked",
     "showFeedbackPrompt",
@@ -251,6 +252,7 @@ async function getExtensionState() {
     hasParentPassword: !!result.parentPassword,
     childLinked: !!result.childLinked,
     childSyncUnlocked: !!result.childSyncUnlocked,
+    childSyncCompletedAt: Number(result.childSyncCompletedAt) || 0,
     focusMode: result.focusMode || "self",
     modeLocked: !!result.modeLocked,
     showFeedbackPrompt: !!result.showFeedbackPrompt,
@@ -510,6 +512,7 @@ async function syncRemoteFocusSession() {
     "accountToken",
     "focusMode",
     "childSyncUnlocked",
+    "childSyncCompletedAt",
     "isFocusActive",
     "remoteSessionId"
   ]);
@@ -525,10 +528,13 @@ async function syncRemoteFocusSession() {
   }
 
   if (typeof result.data?.childLinked === "boolean") {
-    await chrome.storage.local.set({ childLinked: result.data.childLinked });
+    await chrome.storage.local.set({
+      childLinked: result.data.childLinked,
+      childSyncCompletedAt: Number(result.data.childSyncCompletedAt) || 0
+    });
   }
 
-  if (local.focusMode !== "child" || !local.childSyncUnlocked) {
+  if (local.focusMode !== "child" || !local.childSyncUnlocked || !local.childSyncCompletedAt) {
     return { success: true, skipped: true, childLinked: result.data?.childLinked === true };
   }
 
@@ -793,6 +799,7 @@ async function handleMessages(request) {
       await chrome.storage.local.set({
         childLinked: true,
         childSyncUnlocked: true,
+        childSyncCompletedAt: Date.now(),
         modeLocked: true,
         parentEmail: storage.parentEmail || currentEmail
       });
@@ -809,7 +816,11 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "START_SESSION") {
-      if (state.focusMode === "child" && (!state.childSyncUnlocked || !state.childLinked)) {
+      if (state.focusMode === "child" && (
+        !state.childSyncUnlocked ||
+        !state.childLinked ||
+        !state.childSyncCompletedAt
+      )) {
         return { success: false, error: "Complete Child Sync before setting a focus timer." };
       }
       if (state.focusMode === "self") {
@@ -826,6 +837,9 @@ async function handleMessages(request) {
       }
       if (state.focusMode === "parent" && !state.childLinked) {
         return { success: false, error: "Link a child first before starting a parent session." };
+      }
+      if (state.focusMode === "parent" && !state.childSyncCompletedAt) {
+        return { success: false, error: "Complete Child Sync before starting a parent session." };
       }
       if (state.focusMode === "parent" && !state.hasParentPassword) {
         return { success: false, error: "Set a parent password before starting a child session." };
@@ -939,6 +953,7 @@ async function handleMessages(request) {
         "modeLocked",
         "childLinked",
         "childSyncUnlocked",
+        "childSyncCompletedAt",
         "permanentFeedback"
       ]);
       const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
@@ -964,6 +979,7 @@ async function handleMessages(request) {
           : (existing.parentEmail || ""),
         childLinked: !!existing.childLinked || !!progress.childLinked,
         childSyncUnlocked: !!existing.childSyncUnlocked,
+        childSyncCompletedAt: Number(progress.childSyncCompletedAt) || Number(existing.childSyncCompletedAt) || 0,
         modeLocked: !!existing.childSyncUnlocked && !!existing.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken
