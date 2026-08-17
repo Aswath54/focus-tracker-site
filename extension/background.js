@@ -528,9 +528,12 @@ async function syncRemoteFocusSession() {
   }
 
   if (typeof result.data?.childLinked === "boolean") {
+    const hasRemoteSyncMarker = Object.prototype.hasOwnProperty.call(result.data, "childSyncCompletedAt");
     await chrome.storage.local.set({
       childLinked: result.data.childLinked,
-      childSyncCompletedAt: Number(result.data.childSyncCompletedAt) || 0
+      childSyncCompletedAt: hasRemoteSyncMarker
+        ? Number(result.data.childSyncCompletedAt) || 0
+        : Number(local.childSyncCompletedAt) || 0
     });
   }
 
