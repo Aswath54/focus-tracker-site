@@ -18,6 +18,183 @@ const HISTORY_GROUP_DOMAINS = {
     "facebook.com", "x.com", "tiktok.com", "amazon.com"
   ]
 };
+
+// Automatic session analytics categories. These are intentionally separate from
+// the user-created history groups so the category chart stays consistent.
+const ACTIVITY_CATEGORY_DOMAINS = {
+  "Search Engines": [
+    "google.com", "bing.com", "duckduckgo.com", "search.brave.com", "yahoo.com",
+    "yandex.com", "baidu.com", "ecosia.org", "startpage.com", "qwant.com",
+    "ask.com", "aol.com", "naver.com", "seznam.cz"
+  ],
+  "Education & Learning": [
+    "khanacademy.org", "coursera.org", "edx.org", "udemy.com", "quizlet.com",
+    "duolingo.com", "brilliant.org", "codecademy.com", "freecodecamp.org",
+    "w3schools.com", "geeksforgeeks.org", "jstor.org", "scholar.google.com",
+    "classroom.google.com", "canvas.instructure.com", "blackboard.com", "moodle.org",
+    "desmos.com", "geogebra.org", "chegg.com", "turnitin.com", "ixl.com",
+    "academic.oup.com", "ocw.mit.edu", "openstax.org", "ted.com", "grammarly.com"
+  ],
+  "Reference & Knowledge": [
+    "wikipedia.org", "britannica.com", "encyclopedia.com", "wikihow.com", "archive.org",
+    "scholarpedia.org", "snopes.com", "factcheck.org", "howstuffworks.com", "reference.com"
+  ],
+  "Developer Tools": [
+    "github.com", "gitlab.com", "bitbucket.org", "stackoverflow.com", "stackexchange.com",
+    "npmjs.com", "pypi.org", "crates.io", "rubygems.org", "packagist.org", "docker.com",
+    "hub.docker.com", "developer.mozilla.org", "web.dev", "dev.to", "codepen.io",
+    "replit.com", "codesandbox.io", "jsfiddle.net", "leetcode.com", "hackerrank.com",
+    "topcoder.com", "kaggle.com", "huggingface.co", "postman.com", "insomnia.rest"
+  ],
+  "AI & Assistants": [
+    "chatgpt.com", "chat.openai.com", "platform.openai.com", "openai.com", "claude.ai",
+    "gemini.google.com", "copilot.microsoft.com", "perplexity.ai", "poe.com", "character.ai",
+    "you.com", "jasper.ai", "writesonic.com", "midjourney.com", "runwayml.com",
+    "stability.ai", "replicate.com", "cohere.com", "anthropic.com"
+  ],
+  "Productivity & Office": [
+    "docs.google.com", "sheets.google.com", "slides.google.com", "calendar.google.com",
+    "office.com", "microsoft365.com", "word.office.com", "excel.office.com", "powerpoint.office.com",
+    "notion.so", "evernote.com", "todoist.com", "calendly.com", "obsidian.md", "airtable.com",
+    "coda.io", "workflowy.com", "reclaim.ai", "zapier.com", "ifttt.com", "docusign.com"
+  ],
+  "Project Management": [
+    "trello.com", "asana.com", "monday.com", "linear.app", "clickup.com", "jira.com",
+    "atlassian.com", "basecamp.com", "smartsheet.com", "meistertask.com", "wrike.com",
+    "height.app", "shortcut.com", "teamwork.com", "redbooth.com"
+  ],
+  "Email": [
+    "mail.google.com", "outlook.live.com", "outlook.com", "mail.yahoo.com", "proton.me",
+    "protonmail.com", "mail.proton.me", "fastmail.com", "mail.zoho.com", "icloud.com",
+    "mail.com", "gmx.com", "tutanota.com", "hey.com"
+  ],
+  "Communication & Messaging": [
+    "slack.com", "discord.com", "telegram.org", "web.telegram.org", "whatsapp.com",
+    "web.whatsapp.com", "messenger.com", "signal.org", "mattermost.com", "zulip.com",
+    "rocket.chat", "groupme.com", "viber.com", "wechat.com", "line.me"
+  ],
+  "Meetings & Collaboration": [
+    "zoom.us", "meet.google.com", "teams.microsoft.com", "webex.com", "gotomeeting.com",
+    "whereby.com", "around.co", "gather.town", "bluejeans.com", "livestorm.co", "demodesk.com"
+  ],
+  "Cloud Storage": [
+    "drive.google.com", "dropbox.com", "box.com", "onedrive.live.com", "mega.io",
+    "pcloud.com", "sync.com", "mediafire.com", "zippyshare.com", "backblaze.com"
+  ],
+  "Design & Creative": [
+    "figma.com", "canva.com", "adobe.com", "creativecloud.adobe.com", "photoshop.adobe.com",
+    "behance.net", "dribbble.com", "sketch.com", "invisionapp.com", "miro.com", "framer.com",
+    "webflow.com", "unsplash.com", "pexels.com", "pixabay.com", "coolors.co", "autodesk.com",
+    "blender.org", "artstation.com", "deviantart.com", "procreate.com"
+  ],
+  "Writing & Publishing": [
+    "medium.com", "substack.com", "wordpress.com", "wordpress.org", "blogger.com", "ghost.org",
+    "quillbot.com", "hemingwayapp.com", "prowritingaid.com", "scribd.com", "issuu.com",
+    "livejournal.com", "wattpad.com", "reedsy.com", "author.today"
+  ],
+  "Finance & Banking": [
+    "paypal.com", "stripe.com", "venmo.com", "cash.app", "wise.com", "robinhood.com",
+    "fidelity.com", "schwab.com", "vanguard.com", "chase.com", "bankofamerica.com",
+    "wellsfargo.com", "capitalone.com", "americanexpress.com", "coinbase.com", "kraken.com",
+    "binance.com", "sofi.com", "mint.com", "creditkarma.com", "nerdwallet.com", "quickbooks.intuit.com"
+  ],
+  "Shopping & Marketplaces": [
+    "amazon.com", "ebay.com", "walmart.com", "target.com", "bestbuy.com", "etsy.com",
+    "shopify.com", "aliexpress.com", "temu.com", "nike.com", "homedepot.com", "lowes.com",
+    "costco.com", "macys.com", "wayfair.com", "zappos.com", "newegg.com", "shein.com",
+    "sephora.com", "ulta.com", "ikea.com", "patagonia.com"
+  ],
+  "News & Journalism": [
+    "nytimes.com", "washingtonpost.com", "theguardian.com", "bbc.com", "cnn.com", "foxnews.com",
+    "npr.org", "apnews.com", "reuters.com", "wsj.com", "bloomberg.com", "politico.com",
+    "vox.com", "usatoday.com", "latimes.com", "newsweek.com", "time.com", "theatlantic.com",
+    "economist.com", "news.google.com"
+  ],
+  "Social Media": [
+    "facebook.com", "instagram.com", "x.com", "linkedin.com", "threads.net", "pinterest.com",
+    "snapchat.com", "tiktok.com", "mastodon.social", "tumblr.com", "weibo.com", "vk.com",
+    "flickr.com", "nextdoor.com", "bereal.com", "clubhouse.com"
+  ],
+  "Forums & Communities": [
+    "reddit.com", "quora.com", "4chan.org", "lemmy.world", "news.ycombinator.com",
+    "producthunt.com", "discourse.org", "theconversation.com", "stackexchange.com", "answers.com",
+    "discord.com", "community.cloudflare.com"
+  ],
+  "Video & Streaming": [
+    "youtube.com", "netflix.com", "hulu.com", "disneyplus.com", "max.com", "primevideo.com",
+    "twitch.tv", "vimeo.com", "dailymotion.com", "crunchyroll.com", "peacocktv.com",
+    "paramountplus.com", "tubi.tv", "pluto.tv", "rumble.com", "kick.com", "watch.nba.com"
+  ],
+  "Music & Audio": [
+    "spotify.com", "music.apple.com", "soundcloud.com", "tidal.com", "deezer.com", "pandora.com",
+    "bandcamp.com", "audible.com", "iheart.com", "last.fm", "audiomack.com", "mixcloud.com",
+    "music.youtube.com", "npr.org"
+  ],
+  "Gaming": [
+    "steampowered.com", "store.steampowered.com", "epicgames.com", "xbox.com", "playstation.com",
+    "nintendo.com", "roblox.com", "minecraft.net", "itch.io", "riotgames.com", "leagueoflegends.com",
+    "battle.net", "blizzard.com", "ea.com", "ubisoft.com", "gog.com", "chess.com", "lichess.org",
+    "poki.com", "miniclip.com", "kongregate.com", "store.steampowered.com"
+  ],
+  "Sports": [
+    "espn.com", "sports.yahoo.com", "nba.com", "nfl.com", "mlb.com", "nhl.com", "fifa.com",
+    "olympics.com", "skysports.com", "cbssports.com", "bleacherreport.com", "theathletic.com",
+    "formula1.com", "ufc.com", "wwe.com", "ncaasports.com", "strava.com"
+  ],
+  "Travel & Transportation": [
+    "maps.google.com", "maps.apple.com", "tripadvisor.com", "expedia.com", "booking.com",
+    "airbnb.com", "kayak.com", "vrbo.com", "delta.com", "united.com", "southwest.com", "aa.com",
+    "uber.com", "lyft.com", "amtrak.com", "marriott.com", "hilton.com", "hotels.com", "skyscanner.com",
+    "rome2rio.com", "trainline.com"
+  ],
+  "Food & Delivery": [
+    "doordash.com", "ubereats.com", "grubhub.com", "instacart.com", "postmates.com", "seamless.com",
+    "foodnetwork.com", "allrecipes.com", "yelp.com", "opentable.com", "ubereats.com", "hellofresh.com",
+    "blueapron.com", "tasty.co", "seriouseats.com"
+  ],
+  "Health & Fitness": [
+    "webmd.com", "mayoclinic.org", "healthline.com", "cdc.gov", "nih.gov", "myfitnesspal.com",
+    "fitbit.com", "onepeloton.com", "calm.com", "headspace.com", "goodrx.com", "healthcare.gov",
+    "everydayhealth.com", "verywellhealth.com", "mindbodyonline.com", "alltrails.com"
+  ],
+  "Jobs & Careers": [
+    "indeed.com", "glassdoor.com", "monster.com", "ziprecruiter.com", "lever.co", "greenhouse.io",
+    "workday.com", "dice.com", "wellfound.com", "upwork.com", "fiverr.com", "freelancer.com",
+    "remoteok.com", "weworkremotely.com", "builtin.com", "careers.google.com", "usajobs.gov"
+  ],
+  "Business & CRM": [
+    "salesforce.com", "hubspot.com", "zendesk.com", "intercom.com", "pipedrive.com", "oracle.com",
+    "sap.com", "intuit.com", "xero.com", "freshbooks.com", "gusto.com", "adp.com", "servicenow.com",
+    "docusign.com", "qualtrics.com", "gartner.com"
+  ],
+  "Cloud & Infrastructure": [
+    "aws.amazon.com", "console.aws.amazon.com", "cloud.google.com", "console.cloud.google.com",
+    "azure.microsoft.com", "portal.azure.com", "digitalocean.com", "linode.com", "heroku.com",
+    "vercel.com", "netlify.com", "cloudflare.com", "fastly.com", "firebase.google.com", "render.com",
+    "railway.app", "supabase.com", "fly.io", "terraform.io", "kubernetes.io"
+  ],
+  "Security & Privacy": [
+    "1password.com", "lastpass.com", "bitwarden.com", "nordvpn.com", "expressvpn.com", "protonvpn.com",
+    "virustotal.com", "haveibeenpwned.com", "privacytools.io", "malwarebytes.com", "avast.com",
+    "kaspersky.com", "okta.com", "auth0.com", "tailscale.com"
+  ],
+  "Government & Civic": [
+    "usa.gov", "irs.gov", "whitehouse.gov", "congress.gov", "courts.gov", "gov.uk", "canada.ca",
+    "service.gov.au", "europa.eu", "usa.gov", "vote.gov", "sos.ca.gov", "ny.gov", "data.gov"
+  ],
+  "Legal": [
+    "law.cornell.edu", "justia.com", "findlaw.com", "avvo.com", "legalzoom.com", "nolo.com",
+    "courtlistener.com", "casetext.com", "martindale.com", "americanbar.org"
+  ],
+  "Real Estate": [
+    "zillow.com", "redfin.com", "realtor.com", "trulia.com", "apartments.com", "homes.com",
+    "compass.com", "rightmove.co.uk", "remax.com", "coldwellbanker.com", "opendoor.com"
+  ],
+  "Weather & Time": [
+    "weather.com", "accuweather.com", "wunderground.com", "weather.gov", "windy.com",
+    "timeanddate.com", "weatherapi.com", "meteoblue.com", "forecast.weather.gov"
+  ]
+};
 let BACKEND_URL = DEFAULT_BACKEND_URL;
 
 async function loadBackendUrl() {
@@ -206,7 +383,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     comments: ""
   };
   let historyGroups = [...HISTORY_GROUPS];
-  const historyGroupAssignments = new Map();
 
   // Initialize view
   setupPasswordToggles();
@@ -970,6 +1146,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     return String(domain || "").trim().toLowerCase().replace(/^www\./, "");
   }
 
+  function getActivityCategory(domain) {
+    const hostname = normalizeHistoryDomain(domain);
+    let bestMatch = null;
+
+    Object.entries(ACTIVITY_CATEGORY_DOMAINS).forEach(([category, domains]) => {
+      domains.forEach(categoryDomain => {
+        if (
+          (hostname === categoryDomain || hostname.endsWith(`.${categoryDomain}`)) &&
+          (!bestMatch || categoryDomain.length > bestMatch.domain.length)
+        ) {
+          bestMatch = { category, domain: categoryDomain };
+        }
+      });
+    });
+
+    return bestMatch ? bestMatch.category : "Other Websites";
+  }
+
   function getHistoryGroup(domain, savedGroup) {
     if (historyGroups.includes(savedGroup)) return savedGroup;
 
@@ -1032,9 +1226,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     
     await chrome.storage.local.set({ whitelistHistory: history });
-    historyGroupAssignments.set(normalizeHistoryDomain(domain), getHistoryGroup(domain));
     renderHistory(historySearch ? historySearch.value.trim() : "");
-    refreshSessionActivity();
   }
 
   async function addSiteDirectly(domain) {
@@ -1059,9 +1251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     item.group = group;
     await chrome.storage.local.set({ whitelistHistory: history });
-    historyGroupAssignments.set(normalizeHistoryDomain(domain), group);
     renderHistory(historySearch ? historySearch.value.trim() : "");
-    refreshSessionActivity();
   }
 
   async function renderHistory(filterText = "") {
@@ -1107,14 +1297,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       history = [...missingCurrentSites, ...history];
       await chrome.storage.local.set({ whitelistHistory: history });
     }
-
-    historyGroupAssignments.clear();
-    history.forEach(item => {
-      const domain = normalizeHistoryDomain(item.domain);
-      if (domain && historyGroups.includes(item.group)) {
-        historyGroupAssignments.set(domain, item.group);
-      }
-    });
 
     // Previously allowed means sites that are no longer on the active whitelist.
     const currentDomains = new Set(currentAllowedUrls.map(domain => domain.toLowerCase()));
@@ -1232,7 +1414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
   }
 
-  function renderActivityChart(pie, legend, label, activity, isActive, parentView = false, excludeBlocked = false) {
+  function renderActivityChart(pie, legend, label, activity, isActive, parentView = false, excludeBlocked = false, categoryView = false) {
     if (!pie || !legend) return;
 
     const entries = Object.entries(activity || {})
@@ -1253,8 +1435,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (!totalMilliseconds) {
       pie.style.background = "var(--bg-dark-3)";
-      pie.setAttribute("aria-label", parentView ? "No child website activity recorded yet" : "No website activity recorded yet");
-      legend.innerHTML = `<div class="session-activity-empty">${parentView ? "No child website activity recorded yet." : "No website activity recorded yet."}</div>`;
+      const emptyLabel = categoryView
+        ? (parentView ? "No child website category activity recorded yet" : "No website category activity recorded yet")
+        : (parentView ? "No child website activity recorded yet" : "No website activity recorded yet");
+      pie.setAttribute("aria-label", emptyLabel);
+      legend.innerHTML = `<div class="session-activity-empty">${emptyLabel}.</div>`;
       return;
     }
 
@@ -1310,8 +1495,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (domain.startsWith("blocked:")) return groupActivity;
       const duration = Number(milliseconds);
       if (!Number.isFinite(duration) || duration <= 0) return groupActivity;
-      const savedGroup = historyGroupAssignments.get(normalizeHistoryDomain(domain));
-      const group = getHistoryGroup(domain, savedGroup);
+      const group = getActivityCategory(domain);
       groupActivity[group] = (Number(groupActivity[group]) || 0) + duration;
       return groupActivity;
     }, {});
@@ -1598,8 +1782,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, "image/png");
   }
 
-  function downloadGroupActivityImage() {
-    downloadSessionActivityImage(buildGroupActivity(latestSessionActivity), "group-chart");
+  function downloadCategoryActivityImage() {
+    downloadSessionActivityImage(buildGroupActivity(latestSessionActivity), "category-chart");
   }
 
   function downloadBlockedSiteActivityImage(activity = latestSessionActivity) {
@@ -1680,7 +1864,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         null,
         groupActivity,
         response.isActive,
-        false
+        false,
+        false,
+        true
       );
       renderActivityChart(
         parentGroupActivityPie,
@@ -1688,7 +1874,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         null,
         groupActivity,
         response.isActive,
-        !!response.isParentView
+        !!response.isParentView,
+        false,
+        true
       );
       renderBlockedSiteActivity(blockedSiteActivityList, response.activity);
       renderBlockedSiteActivity(parentBlockedSiteActivityList, response.activity);
@@ -1705,10 +1893,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     parentSessionActivityImageDownload.addEventListener("click", () => downloadSessionActivityImage());
   }
   if (groupActivityImageDownload) {
-    groupActivityImageDownload.addEventListener("click", downloadGroupActivityImage);
+    groupActivityImageDownload.addEventListener("click", downloadCategoryActivityImage);
   }
   if (parentGroupActivityImageDownload) {
-    parentGroupActivityImageDownload.addEventListener("click", downloadGroupActivityImage);
+    parentGroupActivityImageDownload.addEventListener("click", downloadCategoryActivityImage);
   }
   if (blockedSiteActivityDownload) {
     blockedSiteActivityDownload.addEventListener("click", () => downloadBlockedSiteActivityImage());
