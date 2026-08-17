@@ -1472,14 +1472,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const canvas = document.createElement("canvas");
-    canvas.width = 500;
+    canvas.width = 900;
     canvas.height = 500;
     const context = canvas.getContext("2d");
     if (!context) return;
 
-    const centerX = 250;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const centerX = 220;
     const centerY = 250;
-    const radius = 220;
+    const radius = 190;
     if (totalMilliseconds > 0) {
       let currentAngle = -Math.PI / 2;
       chartEntries.forEach((item, index) => {
@@ -1499,6 +1501,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     context.strokeStyle = "rgba(255, 255, 255, 0.28)";
     context.lineWidth = 2;
     context.stroke();
+
+    if (totalMilliseconds > 0) {
+      let legendY = 100;
+      chartEntries.forEach((item, index) => {
+        const percentage = Math.round((item.milliseconds / totalMilliseconds) * 100);
+        context.fillStyle = sessionActivityColors[index % sessionActivityColors.length];
+        context.fillRect(470, legendY - 15, 16, 16);
+        context.fillStyle = "#151821";
+        context.font = "18px Arial";
+        const domainLabel = item.domain.length > 32 ? `${item.domain.slice(0, 29)}...` : item.domain;
+        context.fillText(`${domainLabel} - ${formatActivityDuration(item.milliseconds)} (${percentage}%)`, 500, legendY);
+        legendY += 52;
+      });
+    }
 
     canvas.toBlob((blob) => {
       if (!blob) return;
