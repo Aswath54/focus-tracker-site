@@ -134,6 +134,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const groupActivityLegend = document.getElementById("group-activity-legend");
   const groupActivityImageDownload = document.getElementById("group-activity-image-download");
   const blockedSiteActivityList = document.getElementById("blocked-site-activity-list");
+  const blockedSiteActivityDownload = document.getElementById("blocked-site-activity-download");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
@@ -143,6 +144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentGroupActivityLegend = document.getElementById("parent-group-activity-legend");
   const parentGroupActivityImageDownload = document.getElementById("parent-group-activity-image-download");
   const parentBlockedSiteActivityList = document.getElementById("parent-blocked-site-activity-list");
+  const parentBlockedSiteActivityDownload = document.getElementById("parent-blocked-site-activity-download");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -1600,6 +1602,53 @@ document.addEventListener("DOMContentLoaded", async () => {
     downloadSessionActivityImage(buildGroupActivity(latestSessionActivity), "group-chart");
   }
 
+  function downloadBlockedSiteActivityImage(activity = latestSessionActivity) {
+    const domains = Object.entries(activity || {})
+      .filter(([domain, milliseconds]) => domain.startsWith("blocked:") && Number(milliseconds) > 0)
+      .map(([domain]) => domain.slice(8))
+      .sort((a, b) => a.localeCompare(b));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = Math.max(150, 92 + domains.length * 42);
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#151821";
+    context.font = "bold 24px Arial";
+    context.fillText("Blocked Sites Visited", 40, 48);
+
+    if (domains.length === 0) {
+      context.font = "18px Arial";
+      context.fillText("No blocked sites visited.", 40, 94);
+    } else {
+      context.font = "18px Arial";
+      domains.forEach((domain, index) => {
+        const y = 92 + index * 42;
+        context.fillStyle = sessionActivityColors[index % sessionActivityColors.length];
+        context.fillRect(42, y - 15, 16, 16);
+        context.fillStyle = "#151821";
+        const domainLabel = domain.length > 70 ? `${domain.slice(0, 67)}...` : domain;
+        context.fillText(domainLabel, 76, y);
+      });
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const imageUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = imageUrl;
+      link.download = `aurafocus-blocked-sites-${date}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(imageUrl), 1000);
+    }, "image/png");
+  }
+
   function refreshSessionActivity() {
     chrome.runtime.sendMessage({ type: "GET_SESSION_ACTIVITY" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.success) return;
@@ -1660,6 +1709,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   if (parentGroupActivityImageDownload) {
     parentGroupActivityImageDownload.addEventListener("click", downloadGroupActivityImage);
+  }
+  if (blockedSiteActivityDownload) {
+    blockedSiteActivityDownload.addEventListener("click", () => downloadBlockedSiteActivityImage());
+  }
+  if (parentBlockedSiteActivityDownload) {
+    parentBlockedSiteActivityDownload.addEventListener("click", () => downloadBlockedSiteActivityImage());
   }
 
   // --- PASSWORD VISIBILITY TOGGLE ---
