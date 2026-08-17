@@ -1005,6 +1005,11 @@ input:focus {
   line-height: 1.4;
 }
 
+.session-activity-download {
+  width: 100%;
+  margin-top: 10px;
+}
+
 /* Feedback Section styles */
 .feedback-thumbs-row {
   display: flex;

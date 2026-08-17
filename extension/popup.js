@@ -129,10 +129,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const sessionActivityPie = document.getElementById("session-activity-pie");
   const sessionActivityLegend = document.getElementById("session-activity-legend");
   const sessionActivityLabel = document.getElementById("session-activity-label");
+  const sessionActivityDownload = document.getElementById("session-activity-download");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
   const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
+  const parentSessionActivityDownload = document.getElementById("parent-session-activity-download");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -183,6 +185,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let childSyncCompletedAt = 0;
+  let latestSessionActivity = {};
+  let latestSessionActivityIsActive = false;
+  let latestSessionActivityIsParentView = false;
   let parentDurationSeconds = 1500;
   let hasSubmittedSessionFeedback = false;
   let permanentFeedback = {
@@ -1272,9 +1277,193 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function pdfEscape(value) {
+    return String(value || "")
+      .replace(/[^\x20-\x7E]/g, "?")
+      .replace(/[\\()]/g, "\\$&")
+      .replace(/[\r\n]+/g, " ");
+  }
+
+  function pdfNumber(value) {
+    return Number(value).toFixed(3).replace(/\.0+$/, "").replace(/\.$/, "") || "0";
+  }
+
+  function pdfColor(hex) {
+    const value = hex.replace("#", "");
+    return [0, 2, 4].map(index => parseInt(value.slice(index, index + 2), 16) / 255)
+      .map(pdfNumber)
+      .join(" ");
+  }
+
+  function addPdfText(commands, x, y, size, text, color = "0.12 0.13 0.18") {
+    commands.push(`BT /F1 ${size} Tf ${color} rg ${x} ${y} Td (${pdfEscape(text)}) Tj ET`);
+  }
+
+  function addPdfPieSlice(commands, centerX, centerY, radius, startDegree, endDegree, color) {
+    const points = [];
+    const stepCount = Math.max(2, Math.ceil((endDegree - startDegree) / 12));
+    for (let step = 0; step <= stepCount; step++) {
+      const degree = startDegree + ((endDegree - startDegree) * step) / stepCount;
+      const radians = degree * Math.PI / 180;
+      points.push([
+        centerX + Math.cos(radians) * radius,
+        centerY + Math.sin(radians) * radius
+      ]);
+    }
+
+    commands.push(`${pdfColor(color)} rg`);
+    commands.push(`${pdfNumber(centerX)} ${pdfNumber(centerY)} m`);
+    points.forEach(([x, y]) => commands.push(`${pdfNumber(x)} ${pdfNumber(y)} l`));
+    commands.push("h f");
+  }
+
+  function getPdfActivityEntries(activity) {
+    return Object.entries(activity || {})
+      .map(([domain, milliseconds]) => ({
+        domain: domain.startsWith("blocked:") ? `Blocked: ${domain.slice(8)}` : domain,
+        milliseconds: Number(milliseconds)
+      }))
+      .filter(item => item.domain && Number.isFinite(item.milliseconds) && item.milliseconds > 0)
+      .sort((a, b) => b.milliseconds - a.milliseconds);
+  }
+
+  function buildAnalyticsPdf(activity, isActive, parentView) {
+    const entries = getPdfActivityEntries(activity);
+    const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
+    const chartEntries = entries.slice(0, 6);
+    if (entries.length > chartEntries.length) {
+      chartEntries.push({
+        domain: "Other sites",
+        milliseconds: entries.slice(6).reduce((total, item) => total + item.milliseconds, 0)
+      });
+    }
+
+    const firstPageEntries = entries.slice(0, 20);
+    const remainingEntries = entries.slice(20);
+    const pageEntryChunks = [firstPageEntries];
+    for (let index = 0; index < remainingEntries.length; index += 38) {
+      pageEntryChunks.push(remainingEntries.slice(index, index + 38));
+    }
+
+    const pageStreams = pageEntryChunks.map((pageEntries, pageIndex) => {
+      const commands = ["q", "0.97 0.97 0.97 rg 0 0 595 842 re f"];
+      addPdfText(commands, 42, 790, 22, "AuraFocus Session Analytics", "0.08 0.09 0.13");
+      addPdfText(
+        commands,
+        42,
+        768,
+        10,
+        `${parentView ? "Child session" : "Focus session"} - ${isActive ? "In progress" : "Last completed session"}`,
+        "0.35 0.36 0.42"
+      );
+      addPdfText(commands, 42, 750, 9, `Generated ${new Date().toLocaleString()}`, "0.35 0.36 0.42");
+
+      let listY = 700;
+      if (pageIndex === 0) {
+        if (totalMilliseconds > 0) {
+          let currentDegree = -90;
+          chartEntries.forEach((item, index) => {
+            const nextDegree = currentDegree + (item.milliseconds / totalMilliseconds) * 360;
+            addPdfPieSlice(
+              commands,
+              125,
+              610,
+              88,
+              currentDegree,
+              nextDegree,
+              sessionActivityColors[index % sessionActivityColors.length]
+            );
+            currentDegree = nextDegree;
+          });
+          commands.push("0.97 0.97 0.97 rg 125 610 34 34 re f");
+          let legendY = 682;
+          chartEntries.forEach((item, index) => {
+            const percentage = Math.round((item.milliseconds / totalMilliseconds) * 100);
+            commands.push(`${pdfColor(sessionActivityColors[index % sessionActivityColors.length])} rg 270 ${legendY - 2} 8 8 re f`);
+            addPdfText(commands, 284, legendY, 10, `${item.domain} - ${formatActivityDuration(item.milliseconds)} (${percentage}%)`);
+            legendY -= 20;
+          });
+        } else {
+          addPdfText(commands, 42, 620, 13, "No website activity was recorded for this session.", "0.35 0.36 0.42");
+        }
+        listY = 445;
+      } else {
+        listY = 720;
+      }
+
+      addPdfText(commands, 42, listY, 13, "Website breakdown", "0.08 0.09 0.13");
+      listY -= 24;
+      pageEntries.forEach((item, index) => {
+        const absoluteIndex = pageIndex === 0 ? index : 20 + (pageIndex - 1) * 38 + index;
+        const percentage = totalMilliseconds > 0 ? Math.round((item.milliseconds / totalMilliseconds) * 100) : 0;
+        addPdfText(commands, 42, listY, 10, `${absoluteIndex + 1}. ${item.domain}`, "0.12 0.13 0.18");
+        addPdfText(commands, 420, listY, 10, `${formatActivityDuration(item.milliseconds)} (${percentage}%)`, "0.35 0.36 0.42");
+        listY -= 17;
+      });
+
+      addPdfText(commands, 42, 28, 8, `Page ${pageIndex + 1} of ${pageEntryChunks.length}`, "0.45 0.46 0.5");
+      commands.push("Q");
+      return commands.join("\n");
+    });
+
+    const objects = [null];
+    const addObject = (value) => {
+      objects.push(value);
+      return objects.length - 1;
+    };
+    const catalogReference = addObject(null);
+    const pagesReference = addObject(null);
+    const fontReference = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+    const pageReferences = [];
+
+    pageStreams.forEach(stream => {
+      const contentReference = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+      pageReferences.push(addObject(
+        `<< /Type /Page /Parent ${pagesReference} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontReference} 0 R >> >> /Contents ${contentReference} 0 R >>`
+      ));
+    });
+
+    objects[catalogReference] = `<< /Type /Catalog /Pages ${pagesReference} 0 R >>`;
+    objects[pagesReference] = `<< /Type /Pages /Kids [${pageReferences.map(reference => `${reference} 0 R`).join(" ")}] /Count ${pageReferences.length} >>`;
+
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    objects.slice(1).forEach((object, index) => {
+      offsets.push(new TextEncoder().encode(pdf).length);
+      pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    });
+    const xrefOffset = new TextEncoder().encode(pdf).length;
+    pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+    for (let index = 1; index < objects.length; index++) {
+      pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objects.length} /Root ${catalogReference} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    return new Blob([pdf], { type: "application/pdf" });
+  }
+
+  function downloadSessionAnalyticsPdf() {
+    const blob = buildAnalyticsPdf(
+      latestSessionActivity,
+      latestSessionActivityIsActive,
+      latestSessionActivityIsParentView
+    );
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    link.href = downloadUrl;
+    link.download = `aurafocus-session-analytics-${date}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  }
+
   function refreshSessionActivity() {
     chrome.runtime.sendMessage({ type: "GET_SESSION_ACTIVITY" }, (response) => {
       if (chrome.runtime.lastError || !response || !response.success) return;
+      latestSessionActivity = response.activity || {};
+      latestSessionActivityIsActive = !!response.isActive;
+      latestSessionActivityIsParentView = !!response.isParentView;
       renderActivityChart(
         sessionActivityPie,
         sessionActivityLegend,
@@ -1295,6 +1484,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateParentStopControls(response.isActive);
       }
     });
+  }
+
+  if (sessionActivityDownload) {
+    sessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
+  }
+  if (parentSessionActivityDownload) {
+    parentSessionActivityDownload.addEventListener("click", downloadSessionAnalyticsPdf);
   }
 
   // --- PASSWORD VISIBILITY TOGGLE ---
