@@ -971,13 +971,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function addSiteDirectly(domain) {
-    if (currentAllowedUrls.includes(domain)) {
+    const normalizedDomain = String(domain || "").trim().toLowerCase().replace(/^www\./, "");
+    if (!normalizedDomain) return;
+
+    if (currentAllowedUrls.includes(normalizedDomain)) {
       showError(whitelistActionError, "Domain already in whitelist.");
       return;
     }
-    const updatedUrls = [...currentAllowedUrls, domain];
+    const updatedUrls = [...currentAllowedUrls, normalizedDomain];
     saveWhitelist(updatedUrls);
-    addToWhitelistHistory(domain); // Bring to the top of history
   }
 
   async function updateHistoryGroup(domain, group) {
