@@ -1008,6 +1008,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     const result = await chrome.storage.local.get("whitelistHistory");
     let history = result.whitelistHistory || [];
 
+    // Keep one history entry per domain, preserving the newest entry.
+    const originalHistoryLength = history.length;
+    const seenDomains = new Set();
+    history = history.filter(item => {
+      const domain = String(item.domain || "").trim().toLowerCase();
+      if (!domain || seenDomains.has(domain)) return false;
+      seenDomains.add(domain);
+      return true;
+    });
+    if (history.length !== originalHistoryLength) {
+      await chrome.storage.local.set({ whitelistHistory: history });
+    }
+
     // Backfill sites that were whitelisted before history tracking was added.
     const knownDomains = new Set(history.map(item => item.domain));
     const missingCurrentSites = currentAllowedUrls
