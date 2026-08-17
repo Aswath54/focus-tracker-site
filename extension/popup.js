@@ -307,22 +307,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // 1. Password Check
-      if (!state.hasPassword && !isChildMode && !isParentMode) {
-        if (secSetupPassword) secSetupPassword.style.display = "none";
-      } else if (!state.hasPassword) {
-        if (focusModeSelect) {
-          focusModeSelect.value = focusMode;
-          updateFocusModeHelp();
-        }
-        showSection(secSetupPassword);
-        secWhitelist.style.display = "none"; // Hide whitelist during setup
-        secChangePassword.style.display = "none";
-        updateStatus(false, "Setup");
-        return;
-      }
-
-      // 2. Active Session Check
+      // Active Session Check
       const now = Date.now();
       if (isParentMode) {
         chrome.storage.local.get(["showFeedbackPrompt", "feedbackPromptSessionId"], (feedbackState) => {
