@@ -133,6 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const groupActivityPie = document.getElementById("group-activity-pie");
   const groupActivityLegend = document.getElementById("group-activity-legend");
   const groupActivityImageDownload = document.getElementById("group-activity-image-download");
+  const blockedSiteActivityList = document.getElementById("blocked-site-activity-list");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
@@ -141,6 +142,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentGroupActivityPie = document.getElementById("parent-group-activity-pie");
   const parentGroupActivityLegend = document.getElementById("parent-group-activity-legend");
   const parentGroupActivityImageDownload = document.getElementById("parent-group-activity-image-download");
+  const parentBlockedSiteActivityList = document.getElementById("parent-blocked-site-activity-list");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -1211,15 +1213,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
   }
 
-  function renderActivityChart(pie, legend, label, activity, isActive, parentView = false) {
+  function renderActivityChart(pie, legend, label, activity, isActive, parentView = false, excludeBlocked = false) {
     if (!pie || !legend) return;
 
     const entries = Object.entries(activity || {})
       .map(([domain, milliseconds]) => ({
+        blocked: domain.startsWith("blocked:"),
         domain: domain.startsWith("blocked:") ? `Blocked: ${domain.slice(8)}` : domain,
         milliseconds: Number(milliseconds)
       }))
-      .filter(item => item.domain && Number.isFinite(item.milliseconds) && item.milliseconds > 0)
+      .filter(item => item.domain && Number.isFinite(item.milliseconds) && item.milliseconds > 0 && (!excludeBlocked || !item.blocked))
       .sort((a, b) => b.milliseconds - a.milliseconds);
 
     const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
@@ -1285,11 +1288,51 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function buildGroupActivity(activity) {
     return Object.entries(activity || {}).reduce((groupActivity, [domain, milliseconds]) => {
-      const cleanDomain = domain.startsWith("blocked:") ? domain.slice(8) : domain;
-      const group = getHistoryGroup(cleanDomain);
-      groupActivity[group] = (Number(groupActivity[group]) || 0) + Number(milliseconds || 0);
+      if (domain.startsWith("blocked:")) return groupActivity;
+      const duration = Number(milliseconds);
+      if (!Number.isFinite(duration) || duration <= 0) return groupActivity;
+      const group = getHistoryGroup(domain);
+      groupActivity[group] = (Number(groupActivity[group]) || 0) + duration;
       return groupActivity;
     }, {});
+  }
+
+  function renderBlockedSiteActivity(list, activity) {
+    if (!list) return;
+    const entries = Object.entries(activity || {})
+      .filter(([domain, milliseconds]) => domain.startsWith("blocked:") && Number(milliseconds) > 0)
+      .map(([domain, milliseconds]) => ({
+        domain: domain.slice(8),
+        milliseconds: Number(milliseconds)
+      }))
+      .sort((a, b) => b.milliseconds - a.milliseconds);
+
+    list.innerHTML = "";
+    if (entries.length === 0) {
+      const emptyItem = document.createElement("li");
+      emptyItem.className = "session-activity-empty";
+      emptyItem.textContent = "No blocked sites visited.";
+      list.appendChild(emptyItem);
+      return;
+    }
+
+    entries.forEach(item => {
+      const row = document.createElement("li");
+      row.className = "blocked-site-activity-item";
+
+      const domain = document.createElement("span");
+      domain.className = "blocked-site-activity-domain";
+      domain.textContent = item.domain;
+      domain.title = item.domain;
+
+      const duration = document.createElement("span");
+      duration.className = "blocked-site-activity-duration";
+      duration.textContent = formatActivityDuration(item.milliseconds);
+
+      row.appendChild(domain);
+      row.appendChild(duration);
+      list.appendChild(row);
+    });
   }
 
   function pdfEscape(value) {
@@ -1343,7 +1386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function buildAnalyticsPdf(activity, isActive, parentView) {
-    const entries = getPdfActivityEntries(activity);
+    const entries = getPdfActivityEntries(activity).filter(item => !item.domain.startsWith("Blocked: "));
     const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
     const chartEntries = entries.slice(0, 6);
     if (entries.length > chartEntries.length) {
@@ -1474,7 +1517,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function downloadSessionActivityImage(activity = latestSessionActivity, filenamePrefix = "session-chart") {
-    const entries = getPdfActivityEntries(activity);
+    const entries = getPdfActivityEntries(activity).filter(item => !item.domain.startsWith("Blocked: "));
     const totalMilliseconds = entries.reduce((total, item) => total + item.milliseconds, 0);
     const chartEntries = entries.slice(0, 6);
     if (entries.length > chartEntries.length) {
@@ -1559,7 +1602,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         sessionActivityLabel,
         response.activity,
         response.isActive,
-        false
+        false,
+        true
       );
       renderActivityChart(
         parentSessionActivityPie,
@@ -1567,7 +1611,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentSessionActivityLabel,
         response.activity,
         response.isActive,
-        !!response.isParentView
+        !!response.isParentView,
+        true
       );
       const groupActivity = buildGroupActivity(response.activity);
       renderActivityChart(
@@ -1586,6 +1631,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         response.isActive,
         !!response.isParentView
       );
+      renderBlockedSiteActivity(blockedSiteActivityList, response.activity);
+      renderBlockedSiteActivity(parentBlockedSiteActivityList, response.activity);
       if (response.isParentView) {
         updateParentStopControls(response.isActive);
       }
