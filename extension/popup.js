@@ -1170,7 +1170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const entries = Object.entries(activity || {})
       .map(([domain, milliseconds]) => ({
-        domain,
+        domain: domain.startsWith("blocked:") ? `Blocked: ${domain.slice(8)}` : domain,
         milliseconds: Number(milliseconds)
       }))
       .filter(item => item.domain && Number.isFinite(item.milliseconds) && item.milliseconds > 0)

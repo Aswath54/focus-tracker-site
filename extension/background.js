@@ -18,6 +18,19 @@ function withSiteActivityLock(operation) {
 function getTrackableDomain(tab) {
   try {
     const url = new URL(tab && tab.url ? tab.url : "");
+
+    // Blocked pages carry the attempted destination in ?url= so time spent
+    // looking at the blocker is attributed to the blocked site.
+    if (url.protocol === "chrome-extension:" && url.pathname.endsWith("/blocked.html")) {
+      const blockedUrl = url.searchParams.get("url");
+      const blockedDestination = blockedUrl ? new URL(blockedUrl) : null;
+      if (blockedDestination && (blockedDestination.protocol === "http:" || blockedDestination.protocol === "https:")) {
+        const blockedDomain = blockedDestination.hostname.toLowerCase().replace(/^www\./, "");
+        return blockedDomain ? `blocked:${blockedDomain}` : "";
+      }
+      return "";
+    }
+
     if (url.protocol !== "http:" && url.protocol !== "https:") return "";
     return url.hostname.toLowerCase().replace(/^www\./, "");
   } catch (error) {
