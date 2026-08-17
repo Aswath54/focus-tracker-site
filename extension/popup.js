@@ -233,6 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const hasSignedInAccount = !!(accountToken && accountUser);
       const accountRequired = isAccountMode && !hasSignedInAccount;
       const showParentOnlyPanels = isParentMode;
+      updateChildTimerControls();
 
       if (parentTestView) {
         parentTestView.style.display = isParentMode && !accountRequired ? "flex" : "none";
@@ -650,7 +651,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   presetBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (focusMode === "parent") return;
+      if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) return;
       presetBtns.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       activeDurationSeconds = parseInt(btn.dataset.seconds, 10);
@@ -661,7 +662,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnSetCustom.addEventListener("click", () => {
-    if (focusMode === "parent") return;
+    if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) return;
     const mins = parseInt(customMinutesInput.value, 10);
     if (isNaN(mins) || mins < 1) {
       customMinutesInput.value = 1;
@@ -679,7 +680,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start focus session
   btnStartFocus.addEventListener("click", () => {
-    if (focusMode === "parent") return;
+    if (focusMode === "parent" || (focusMode === "child" && !childSyncUnlocked)) {
+      if (focusMode === "child") {
+        alert("Complete Child Sync before setting a focus timer.");
+      }
+      return;
+    }
     const sessionPassword = selfSessionPassword ? selfSessionPassword.value : "";
     const sessionPasswordConfirm = selfSessionPasswordConfirm ? selfSessionPasswordConfirm.value : "";
     if (focusMode === "self" && (sessionPassword.length < 4 || sessionPassword !== sessionPasswordConfirm)) {
@@ -701,6 +707,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   });
+
+  function updateChildTimerControls() {
+    const timerEnabled = focusMode !== "child" || childSyncUnlocked;
+    presetBtns.forEach(button => {
+      button.disabled = !timerEnabled;
+    });
+    if (btnSetCustom) btnSetCustom.disabled = !timerEnabled;
+    if (customMinutesInput) customMinutesInput.disabled = !timerEnabled;
+    if (btnStartFocus) btnStartFocus.disabled = !timerEnabled;
+    if (selfSessionPassword) selfSessionPassword.disabled = !timerEnabled;
+    if (selfSessionPasswordConfirm) selfSessionPasswordConfirm.disabled = !timerEnabled;
+  }
 
   if (btnParentStartFocus) {
     btnParentStartFocus.addEventListener("click", () => {
