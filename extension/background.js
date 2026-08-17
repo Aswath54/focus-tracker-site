@@ -474,29 +474,35 @@ async function stopRemoteFocusSession() {
 }
 
 async function publishRemoteFocusActivity() {
-  const local = await chrome.storage.local.get([
-    "accountToken",
-    "focusMode",
-    "isFocusActive",
-    "remoteSessionId"
-  ]);
-  if (
-    !local.accountToken ||
-    local.focusMode !== "child" ||
-    !local.isFocusActive ||
-    !local.remoteSessionId
-  ) {
-    return { skipped: true };
-  }
-
-  const activity = await flushActiveSiteActivity();
-  return requestRemoteFocusSession("/api/focus-session/activity", {
-    method: "POST",
-    body: {
-      sessionId: local.remoteSessionId,
-      activity
+  try {
+    const local = await chrome.storage.local.get([
+      "accountToken",
+      "focusMode",
+      "isFocusActive",
+      "remoteSessionId"
+    ]);
+    if (
+      !local.accountToken ||
+      local.focusMode !== "child" ||
+      !local.isFocusActive ||
+      !local.remoteSessionId
+    ) {
+      return { skipped: true };
     }
-  });
+
+    const activity = await flushActiveSiteActivity();
+    return requestRemoteFocusSession("/api/focus-session/activity", {
+      method: "POST",
+      body: {
+        sessionId: local.remoteSessionId,
+        activity
+      }
+    });
+  } catch (error) {
+    // Activity reporting is optional; it must never block session syncing.
+    console.warn("Could not publish remote site activity:", error.message);
+    return { skipped: true, error: error.message };
+  }
 }
 
 async function syncRemoteFocusSession() {
