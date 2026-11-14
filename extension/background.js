@@ -262,12 +262,41 @@ async function getExtensionState() {
   };
 }
 
+function isAllowedFocusUrl(rawUrl, allowedUrls = []) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return true;
+
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    const excludedDomains = [
+      ...EDUCATIONAL_DOMAINS.map((domain) => domain.split("/")[0]),
+      ...allowedUrls.map((domain) => domain.replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0])
+    ].filter(Boolean);
+
+    return excludedDomains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch (error) {
+    return true;
+  }
+}
+
+async function enforceActiveTabBlocking(tabId, rawUrl) {
+  if (!rawUrl || !/^https?:/i.test(rawUrl)) return;
+  const state = await getExtensionState();
+  if (!state.isFocusActive || Date.now() >= state.sessionEndTime) return;
+  if (isAllowedFocusUrl(rawUrl, state.allowedUrls)) return;
+
+  try {
+    await chrome.tabs.update(tabId, {
+      url: chrome.runtime.getURL(`blocked.html?url=${encodeURIComponent(rawUrl)}`)
+    });
+  } catch (error) {
+    console.warn("Could not redirect a blocked history navigation:", error.message);
+  }
+}
+
 // Redirect all open tabs that are on blocked sites
 async function redirectActiveBlockedTabs(allowedUrls) {
   const tabs = await chrome.tabs.query({});
-  const normalizedDomains = allowedUrls.map(url => url.replace(/^(https?:\/\/)?(www\.)?/, "").split('/')[0]).filter(Boolean);
-  const eduDomains = EDUCATIONAL_DOMAINS.map(d => d.split('/')[0]);
-  const excluded = [...new Set([...eduDomains, ...normalizedDomains])];
 
   for (const tab of tabs) {
     if (tab.url) {
@@ -276,19 +305,7 @@ async function redirectActiveBlockedTabs(allowedUrls) {
         // Skip chrome://, about:, extension pages etc.
         if (url.protocol !== "http:" && url.protocol !== "https:") continue;
 
-        const hostname = url.hostname.toLowerCase();
-        const hostNoWww = hostname.startsWith("www.") ? hostname.substring(4) : hostname;
-
-        // Check if hostname is excluded
-        let isAllowed = false;
-        for (const dom of excluded) {
-          if (hostNoWww === dom || hostNoWww.endsWith("." + dom)) {
-            isAllowed = true;
-            break;
-          }
-        }
-
-        if (!isAllowed) {
+        if (!isAllowedFocusUrl(tab.url, allowedUrls)) {
           chrome.tabs.update(tab.id, {
             url: chrome.runtime.getURL(`blocked.html?url=${encodeURIComponent(tab.url)}`)
           });
@@ -664,11 +681,23 @@ chrome.tabs.onActivated.addListener(() => {
   });
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (!changeInfo.url || !tab.active) return;
-  refreshActiveSiteTracking().catch((error) => {
-    console.warn("Could not update site activity after navigation:", error.message);
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId, (tab) => {
+    if (!chrome.runtime.lastError && tab?.url) {
+      enforceActiveTabBlocking(tabId, tab.url);
+    }
   });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url) {
+    enforceActiveTabBlocking(tabId, changeInfo.url);
+    if (tab.active) {
+      refreshActiveSiteTracking().catch((error) => {
+        console.warn("Could not update site activity after navigation:", error.message);
+      });
+    }
+  }
 });
 
 chrome.tabs.onRemoved.addListener(() => {
