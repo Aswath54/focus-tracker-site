@@ -23,6 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const countdownTimer = document.getElementById("countdown-timer");
   const quoteText = document.getElementById("quote-text");
   const quoteAuthor = document.getElementById("quote-author");
+  const bypassTitle = document.getElementById("bypass-title");
+  const bypassDescription = document.getElementById("bypass-description");
+  const bypassForm = document.querySelector(".bypass-form");
   
   const bypassPasswordInput = document.getElementById("bypass-password");
   const btnBypass = document.getElementById("btn-bypass");
@@ -57,6 +60,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const state = response.state;
+
+      if (state.focusMode === "child") {
+        if (bypassTitle) bypassTitle.textContent = "Parent-Controlled Session";
+        if (bypassDescription) {
+          bypassDescription.textContent = "Only the parent can stop this session. Ask them to stop it from Parent mode.";
+        }
+        if (bypassForm) bypassForm.style.display = "none";
+      }
 
       // If focus session is not active, redirect back immediately
       if (!state.isFocusActive || Date.now() >= state.sessionEndTime) {
