@@ -846,7 +846,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           accountUser = profileData.user;
           await chrome.storage.local.set({ accountUser });
         }
-        await restoreProgress(profileData.progress);
+        const syncedProgress = profileData.progress && typeof profileData.progress === "object"
+          ? profileData.progress
+          : {};
+        const syncedParentPassword = typeof syncedProgress.parentPassword === "string"
+          ? syncedProgress.parentPassword
+          : "";
+        const syncedParentEmail = typeof syncedProgress.parentEmail === "string"
+          ? syncedProgress.parentEmail.trim().toLowerCase()
+          : "";
+        await restoreProgress(syncedProgress);
+        await chrome.storage.local.set({
+          parentPassword: syncedParentPassword,
+          parentEmail: syncedParentEmail
+        });
+        parentPassword = syncedParentPassword;
+        hasParentPassword = Boolean(syncedParentPassword);
+        if (!syncedParentPassword) {
+          showError(
+            childSyncError,
+            "No parent password is saved to this Google account. Save it in Parent mode using the same Google account, then retry."
+          );
+          return;
+        }
       } catch (error) {
         showError(childSyncError, error.message || "Could not refresh synced progress.");
         return;
