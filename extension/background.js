@@ -551,11 +551,14 @@ async function syncRemoteFocusSession() {
 
   if (typeof result.data?.childLinked === "boolean") {
     const hasRemoteSyncMarker = Object.prototype.hasOwnProperty.call(result.data, "childSyncCompletedAt");
+    const childSyncCompletedAt = hasRemoteSyncMarker
+      ? Number(result.data.childSyncCompletedAt) || 0
+      : Number(local.childSyncCompletedAt) || 0;
+    const hasRemoteChildSync = result.data.childLinked && childSyncCompletedAt > 0;
     await chrome.storage.local.set({
       childLinked: result.data.childLinked,
-      childSyncCompletedAt: hasRemoteSyncMarker
-        ? Number(result.data.childSyncCompletedAt) || 0
-        : Number(local.childSyncCompletedAt) || 0
+      childSyncCompletedAt: hasRemoteChildSync ? childSyncCompletedAt : 0,
+      ...(hasRemoteChildSync ? {} : { childSyncUnlocked: false, modeLocked: false })
     });
   }
 
@@ -1014,6 +1017,9 @@ async function handleMessages(request) {
       }
 
       const progress = request.progress || {};
+      const restoredChildLinked = progress.childLinked === true;
+      const restoredChildSyncCompletedAt = Number(progress.childSyncCompletedAt) || 0;
+      const hasRestoredChildSync = restoredChildLinked && restoredChildSyncCompletedAt > 0;
       const existing = await chrome.storage.local.get([
         "accountToken",
         "allowedUrls",
@@ -1054,9 +1060,9 @@ async function handleMessages(request) {
         // The signed-in account's sync state is authoritative. Keeping a local
         // true value here made old links survive after the account was unsynced.
         childLinked: progress.childLinked === true,
-        childSyncUnlocked: !!existing.childSyncUnlocked,
-        childSyncCompletedAt: Number(progress.childSyncCompletedAt) || 0,
-        modeLocked: !!existing.childSyncUnlocked && !!existing.modeLocked,
+        childSyncUnlocked: hasRestoredChildSync && !!existing.childSyncUnlocked,
+        childSyncCompletedAt: hasRestoredChildSync ? restoredChildSyncCompletedAt : 0,
+        modeLocked: hasRestoredChildSync && !!existing.childSyncUnlocked && !!existing.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken
           : typeof existing.accountToken === "string"

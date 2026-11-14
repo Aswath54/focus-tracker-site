@@ -592,7 +592,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && (!childSyncUnlocked || !childSyncCompletedAt) ? "block" : "none";
+        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt) ? "block" : "none";
       }
       if (parentTimerPanel) {
         const showParentTimer = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword;
@@ -619,7 +619,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // A child device has only one available action until the parent
       // password has been verified. Keep the sync form visible even if the
       // local lock password has not been configured yet.
-      if (isChildMode && (!childSyncUnlocked || !childSyncCompletedAt)) {
+      if (isChildMode && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt)) {
         showSection(null);
         if (secWhitelist) secWhitelist.style.display = "none";
         if (secChangePassword) secChangePassword.style.display = "none";
@@ -804,7 +804,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         parentControlPanel.style.display = focusMode === "parent" && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = focusMode === "child" && (!childSyncUnlocked || !childSyncCompletedAt) && !!(accountToken && accountUser) ? "block" : "none";
+        childSyncPanel.style.display = focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt) && !!(accountToken && accountUser) ? "block" : "none";
       }
       if (parentTimerPanel) {
         parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";

@@ -791,12 +791,8 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  const previousSyncCompletedAt = Number(user.progress && user.progress.childSyncCompletedAt) || 0;
   const incomingProgress = req.body && req.body.progress;
   user.progress = sanitizeProgress(incomingProgress);
-  if (!(Number(incomingProgress && incomingProgress.childSyncCompletedAt) > 0)) {
-    user.progress.childSyncCompletedAt = previousSyncCompletedAt;
-  }
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
