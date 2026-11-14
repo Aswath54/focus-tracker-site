@@ -817,20 +817,37 @@ async function handleMessages(request) {
       return { success: true };
     }
 
-    else if (request.type === "AUTHORIZE_CHILD_LOGOUT") {
-      const storage = await chrome.storage.local.get(["parentPassword", "parentEmail", "accountUser"]);
-      const currentEmail = typeof storage.accountUser?.email === "string"
-        ? storage.accountUser.email.trim().toLowerCase()
-        : "";
-      if (!storage.parentPassword) {
-        return { success: false, error: "The parent sync password is not available on this device." };
+    else if (request.type === "REQUEST_ACCOUNT_LOGOUT") {
+      const storage = await chrome.storage.local.get([
+        "focusMode", "childSyncUnlocked", "childLinked", "childSyncCompletedAt"
+      ]);
+      const requiresParentPassword = storage.focusMode === "child" &&
+        !!storage.childSyncUnlocked && !!storage.childLinked && !!storage.childSyncCompletedAt;
+      return { success: true, requiresParentPassword };
+    }
+
+    else if (request.type === "LOGOUT_ACCOUNT") {
+      const storage = await chrome.storage.local.get([
+        "focusMode", "childSyncUnlocked", "childLinked", "childSyncCompletedAt",
+        "parentPassword", "parentEmail", "accountUser"
+      ]);
+      const requiresParentPassword = storage.focusMode === "child" &&
+        !!storage.childSyncUnlocked && !!storage.childLinked && !!storage.childSyncCompletedAt;
+      if (requiresParentPassword) {
+        if (!storage.parentPassword) {
+          return { success: false, error: "The parent sync password is not available on this device." };
+        }
+        if (storage.parentPassword !== request.parentPassword) {
+          return { success: false, error: "Incorrect parent sync password." };
+        }
+        const currentEmail = typeof storage.accountUser?.email === "string"
+          ? storage.accountUser.email.trim().toLowerCase()
+          : "";
+        if (!currentEmail || (storage.parentEmail && storage.parentEmail !== currentEmail)) {
+          return { success: false, error: "Sign in with the linked parent account before logging out." };
+        }
       }
-      if (storage.parentPassword !== request.parentPassword) {
-        return { success: false, error: "Incorrect parent sync password." };
-      }
-      if (!currentEmail || (storage.parentEmail && storage.parentEmail !== currentEmail)) {
-        return { success: false, error: "Sign in with the linked parent account before logging out." };
-      }
+      await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
       return { success: true };
     }
     

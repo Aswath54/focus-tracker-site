@@ -2659,19 +2659,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function clearAccount() {
-    accountToken = null;
-    accountUser = null;
-    modeLocked = false;
-    hideAccountError();
-    if (focusModeSelect) {
-      focusModeSelect.disabled = false;
-    }
-    await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
-    renderAccount();
-    await refreshState();
-  }
-
   function hideAccountError() {
     if (accountError) {
       accountError.style.display = "none";
@@ -2684,14 +2671,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (btnAccountLogout) {
     btnAccountLogout.addEventListener("click", () => {
-      if (focusMode === "child" && childSyncUnlocked && childLinked && childSyncCompletedAt) {
-        if (childLogoutError) childLogoutError.style.display = "none";
-        if (childLogoutPassword) childLogoutPassword.value = "";
-        if (childLogoutForm) childLogoutForm.style.display = "flex";
-        childLogoutPassword?.focus();
-        return;
-      }
-      clearAccount();
+      chrome.runtime.sendMessage({ type: "REQUEST_ACCOUNT_LOGOUT" }, (response) => {
+        if (chrome.runtime.lastError || !response?.success) {
+          showError(accountError, "Could not check this device's sync status. Try again.");
+          return;
+        }
+        if (response.requiresParentPassword) {
+          if (childLogoutError) childLogoutError.style.display = "none";
+          if (childLogoutPassword) childLogoutPassword.value = "";
+          if (childLogoutForm) childLogoutForm.style.display = "flex";
+          childLogoutPassword?.focus();
+          return;
+        }
+        finishAccountLogout();
+      });
     });
   }
 
@@ -2708,7 +2701,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       event.preventDefault();
       if (childLogoutError) childLogoutError.style.display = "none";
       chrome.runtime.sendMessage({
-        type: "AUTHORIZE_CHILD_LOGOUT",
+        type: "LOGOUT_ACCOUNT",
         parentPassword: childLogoutPassword?.value || ""
       }, (response) => {
         if (chrome.runtime.lastError || !response?.success) {
@@ -2719,9 +2712,20 @@ document.addEventListener("DOMContentLoaded", async () => {
           return;
         }
         childLogoutForm.style.display = "none";
-        clearAccount();
+        finishAccountLogout();
       });
     });
+  }
+
+  function finishAccountLogout() {
+    accountToken = null;
+    accountUser = null;
+    modeLocked = false;
+    hideAccountError();
+    if (focusModeSelect) focusModeSelect.disabled = false;
+    if (childLogoutForm) childLogoutForm.style.display = "none";
+    renderAccount();
+    refreshState();
   }
 
   async function loadPermanentFeedback() {
