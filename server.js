@@ -21,8 +21,8 @@ const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
 const AUTH_EXTENSION_ID = normalizeEnv(process.env.AUTH_EXTENSION_ID || process.env.AUTH0_EXTENSION_ID);
-const GOOGLE_CLIENT_ID = process.env.AUTH_GOOGLE_ID || process.env.CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.AUTH_GOOGLE_SECRET || process.env.CLIENT_SECRET;
+const GOOGLE_CLIENT_ID = normalizeEnv(process.env.AUTH_GOOGLE_ID || process.env.CLIENT_ID);
+const GOOGLE_CLIENT_SECRET = normalizeEnv(process.env.AUTH_GOOGLE_SECRET || process.env.CLIENT_SECRET);
 const GOOGLE_OAUTH_CONFIGURED = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 const PASSWORD_RESET_REQUEST_COOLDOWN_MS = 1000 * 60;
