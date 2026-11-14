@@ -1,6 +1,7 @@
 // AuraFocus Service Worker (background.js)
 
-const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
+const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production.up.railway.app";
+const LEGACY_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
 const REMOTE_FOCUS_SESSION_ALARM = "remote-focus-session-sync";
 const REMOTE_FOCUS_SESSION_PERIOD_MINUTES = 0.5;
 
@@ -370,6 +371,10 @@ async function updateBlockingRules(allowedUrls) {
 async function getRemoteBackendUrl() {
   const result = await chrome.storage.local.get("backendUrl");
   const configuredUrl = typeof result.backendUrl === "string" ? result.backendUrl.trim() : "";
+  if (configuredUrl.replace(/\/+$/, "") === LEGACY_BACKEND_URL) {
+    await chrome.storage.local.set({ backendUrl: DEFAULT_BACKEND_URL });
+    return DEFAULT_BACKEND_URL;
+  }
   return (configuredUrl || DEFAULT_BACKEND_URL).replace(/\/+$/, "");
 }
 

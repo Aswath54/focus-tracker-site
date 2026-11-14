@@ -1,5 +1,6 @@
 // AuraFocus Popup Logic (popup.js)
-const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
+const DEFAULT_BACKEND_URL = "https://focus-tracker-site-production.up.railway.app";
+const LEGACY_BACKEND_URL = "https://focus-tracker-site-production-628b.up.railway.app";
 const HISTORY_GROUPS = ["School", "Work", "Personal"];
 const CREATE_GROUP_OPTION = "__create_group__";
 const HISTORY_GROUP_DOMAINS = {
@@ -325,8 +326,11 @@ async function loadBackendUrl() {
   try {
     const result = await chrome.storage.local.get("backendUrl");
     const stored = typeof result.backendUrl === "string" ? result.backendUrl.trim() : "";
-    if (stored) {
+    if (stored && stored.replace(/\/+$/, "") !== LEGACY_BACKEND_URL) {
       BACKEND_URL = stored.replace(/\/+$/, "");
+    } else if (stored) {
+      await chrome.storage.local.set({ backendUrl: DEFAULT_BACKEND_URL });
+      BACKEND_URL = DEFAULT_BACKEND_URL;
     }
   } catch (e) {
     console.warn("Could not read backend URL from storage; using default.", e);
@@ -2424,7 +2428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const configResponse = await fetch(backendPath("/api/auth/config"));
       const config = await configResponse.json().catch(() => ({}));
-      if (!configResponse.ok || !config.issuerBaseUrl || !config.clientId || !config.extensionRedirectUri) {
+      if (!configResponse.ok || !config.authorizationUrl || !config.clientId || !config.extensionRedirectUri) {
         throw new Error(config.error || "Google sign-in is not configured yet.");
       }
 
@@ -2436,13 +2440,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const state = createRandomString();
       const codeVerifier = createRandomString(48);
       const codeChallenge = await createCodeChallenge(codeVerifier);
-      const authorizeUrl = new URL(`${config.issuerBaseUrl}/authorize`);
+      const authorizeUrl = new URL(config.authorizationUrl);
       authorizeUrl.search = new URLSearchParams({
         client_id: config.clientId,
         redirect_uri: redirectUri,
         response_type: "code",
         scope: "openid profile email",
-        connection: "google-oauth2",
         state,
         code_challenge: codeChallenge,
         code_challenge_method: "S256",

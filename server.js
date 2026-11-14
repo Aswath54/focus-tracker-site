@@ -6,7 +6,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
-const { auth, requiresAuth } = require("express-openid-connect");
+const authJs = require("./auth");
 
 let nodemailer;
 try {
@@ -20,67 +20,19 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_EMAIL = normalizeEnv(process.env.ADMIN_EMAIL).toLowerCase();
 const ADMIN_SESSION_SECRET =
   process.env.ADMIN_SESSION_SECRET || process.env.SECRET || "aurafocus-admin-session-secret";
-const AUTH0_EXTENSION_ID = normalizeEnv(process.env.AUTH0_EXTENSION_ID);
+const AUTH_EXTENSION_ID = normalizeEnv(process.env.AUTH_EXTENSION_ID || process.env.AUTH0_EXTENSION_ID);
+const GOOGLE_CLIENT_ID = process.env.AUTH_GOOGLE_ID || process.env.CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.AUTH_GOOGLE_SECRET || process.env.CLIENT_SECRET;
+const GOOGLE_OAUTH_CONFIGURED = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 const PASSWORD_RESET_TOKEN_TTL_MS = 1000 * 60 * 60;
 const PASSWORD_RESET_REQUEST_COOLDOWN_MS = 1000 * 60;
 const passwordResetRequestTimes = new Map();
 
 app.set("trust proxy", 1);
 
-const authEnv = {
-  secret: process.env.SECRET,
-  baseURL: process.env.BASE_URL,
-  clientID: process.env.CLIENT_ID,
-  clientSecret: process.env.CLIENT_SECRET,
-  issuerBaseURL: process.env.ISSUER_BASE_URL,
-};
-const authEnvKeys = Object.keys(authEnv);
-const hasFullAuthConfig = authEnvKeys.every((key) => Boolean(authEnv[key]));
-const hasPartialAuthConfig = authEnvKeys.some((key) => Boolean(authEnv[key])) && !hasFullAuthConfig;
-
-if (hasFullAuthConfig) {
-  app.use(
-    auth({
-      authRequired: false,
-      auth0Logout: true,
-      ...authEnv,
-    })
-  );
-} else {
-  if (hasPartialAuthConfig) {
-    const missingKeys = authEnvKeys.filter((key) => !authEnv[key]);
-    console.warn(
-      `Auth disabled: missing required Auth0 env vars: ${missingKeys.join(", ")}`
-    );
-  } else {
-    console.warn("Auth disabled: no Auth0 env vars detected.");
-  }
-
-  app.use((req, res, next) => {
-    req.oidc = {
-      isAuthenticated: () => false,
-      user: null,
-      login: () => {
-        res.status(503).send("Authentication is not configured.");
-      },
-    };
-    next();
-  });
+if (!authJs.configured) {
+  console.warn("Auth disabled: set AUTH_SECRET, AUTH_GOOGLE_ID, and AUTH_GOOGLE_SECRET.");
 }
-
-const requireAuthIfConfigured = hasFullAuthConfig
-  ? (req, res, next) => {
-      if (req.session && req.session.localUser) {
-        return next();
-      }
-      return requiresAuth()(req, res, next);
-    }
-  : (req, res, next) => {
-      if (req.session && req.session.localUser) {
-        return next();
-      }
-      res.status(503).json({ error: "Authentication is not configured." });
-    };
 
 // Support parsing JSON and URL-encoded bodies
 app.use(express.json());
@@ -93,6 +45,31 @@ app.use((req, res, next) => {
     return res.sendStatus(204);
   }
   next();
+});
+app.all(/^\/api\/auth\/(?!config(?:\/|$)|google-login(?:\/|$)|profile(?:\/|$)).*/, async (req, res) => {
+  if (!authJs.configured) {
+    return res.status(503).send("Google authentication is not configured.");
+  }
+  try {
+    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    const headers = new Headers();
+    for (const [name, value] of Object.entries(req.headers)) {
+      if (Array.isArray(value)) value.forEach((item) => headers.append(name, item));
+      else if (value !== undefined) headers.set(name, value);
+    }
+    let body;
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      body = JSON.stringify(req.body || {});
+      if (!headers.has("content-type")) headers.set("content-type", "application/json");
+    }
+    const response = await authJs.handle(new Request(url, { method: req.method, headers, body }));
+    res.status(response.status);
+    response.headers.forEach((value, name) => res.setHeader(name, value));
+    res.send(Buffer.from(await response.arrayBuffer()));
+  } catch (error) {
+    console.error("Auth.js request failed:", error);
+    res.status(500).send("Authentication request failed.");
+  }
 });
 app.use(
   session({
@@ -185,7 +162,7 @@ function requireAdmin(req, res, next) {
 }
 
 function isAppAuthenticated(req) {
-  return (req.oidc && req.oidc.isAuthenticated && req.oidc.isAuthenticated()) || Boolean(req.session && req.session.localUser);
+  return Boolean(req.authUser) || Boolean(req.session && req.session.localUser);
 }
 
 function buildProfile(req) {
@@ -197,7 +174,20 @@ function buildProfile(req) {
     };
   }
 
-  return req.oidc && req.oidc.user ? { ...req.oidc.user, authProvider: "google" } : null;
+  return req.authUser ? { ...req.authUser, authProvider: "google" } : null;
+}
+
+async function getAuthUser(req) {
+  if (!authJs.configured) return null;
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+  }
+  const response = await authJs.handle(new Request(`${req.protocol}://${req.get("host")}/api/auth/session`, { headers }));
+  if (!response.ok) return null;
+  const sessionData = await response.json().catch(() => null);
+  req.authUser = sessionData && sessionData.user ? sessionData.user : null;
+  return req.authUser;
 }
 
 function normalizeEmail(email) {
@@ -236,13 +226,13 @@ function getPasswordResetBaseUrl(req) {
 }
 
 function getAuth0ExtensionRedirectUri() {
-  const configuredRedirectUri = normalizeEnv(process.env.AUTH0_EXTENSION_REDIRECT_URI);
+  const configuredRedirectUri = normalizeEnv(process.env.AUTH_EXTENSION_REDIRECT_URI || process.env.AUTH0_EXTENSION_REDIRECT_URI);
   if (configuredRedirectUri) {
     return configuredRedirectUri;
   }
 
-  return AUTH0_EXTENSION_ID
-    ? `https://${AUTH0_EXTENSION_ID}.chromiumapp.org/callback`
+  return AUTH_EXTENSION_ID
+    ? `https://${AUTH_EXTENSION_ID}.chromiumapp.org/callback`
     : "";
 }
 
@@ -527,17 +517,10 @@ function upsertLocalUser(email, password) {
 
 // Authentication routes
 app.get("/login/google", (req, res) => {
-  if (!hasFullAuthConfig) {
+  if (!authJs.configured) {
     return res.status(503).send("Google authentication is not configured.");
   }
-
-  return res.oidc.login({
-    returnTo: "/",
-    authorizationParams: {
-      connection: "google-oauth2",
-      scope: "openid profile email",
-    },
-  });
+  return res.redirect("/api/auth/signin/google?callbackUrl=%2F");
 });
 
 app.get("/signup", (req, res) => {
@@ -548,36 +531,26 @@ app.get("/profile", (req, res) => {
   return res.redirect("/");
 });
 
-app.get("/auth/complete-signup", requireAuthIfConfigured, (req, res) => {
+app.get("/auth/complete-signup", async (req, res) => {
   return res.redirect("/");
 });
 
-app.get("/auth/complete-login", requireAuthIfConfigured, (req, res) => {
+app.get("/auth/complete-login", async (req, res) => {
   return res.redirect("/");
 });
 
 app.get("/admin/login/google", (req, res) => {
-  if (!hasFullAuthConfig || !ADMIN_EMAIL) {
+  if (!authJs.configured || !ADMIN_EMAIL) {
     return res.status(503).send("Google admin authentication is not configured.");
   }
-
-  return res.oidc.login({
-    returnTo: "/admin/auth/complete",
-    authorizationParams: {
-      connection: "google-oauth2",
-      prompt: "select_account",
-      scope: "openid profile email",
-    },
-  });
+  return res.redirect("/api/auth/signin/google?callbackUrl=%2Fadmin%2Fauth%2Fcomplete&prompt=select_account");
 });
 
-app.get("/admin/auth/complete", requireAuthIfConfigured, (req, res) => {
-  const signedInEmail = normalizeEmail(req.oidc && req.oidc.user && req.oidc.user.email);
+app.get("/admin/auth/complete", async (req, res) => {
+  const authUser = await getAuthUser(req);
+  const signedInEmail = normalizeEmail(authUser && authUser.email);
   if (!signedInEmail || signedInEmail !== ADMIN_EMAIL) {
-    if (res.oidc && typeof res.oidc.logout === "function") {
-      return res.oidc.logout({ returnTo: "/admin-login.html?error=unauthorized" });
-    }
-    return res.status(403).send("This Google account is not authorized for the admin console.");
+    return res.redirect("/admin-login.html?error=unauthorized");
   }
 
   req.session.isAdmin = true;
@@ -595,13 +568,13 @@ app.post("/auth/local/login", async (req, res) => {
 
 app.get("/api/auth/config", (req, res) => {
   const extensionRedirectUri = getAuth0ExtensionRedirectUri();
-  if (!hasFullAuthConfig || !process.env.CLIENT_ID || !extensionRedirectUri) {
+  if (!GOOGLE_OAUTH_CONFIGURED || !extensionRedirectUri) {
     return res.status(503).json({ error: "Google authentication is not configured." });
   }
 
   return res.json({
-    issuerBaseUrl: authEnv.issuerBaseURL,
-    clientId: authEnv.clientID,
+    authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: GOOGLE_CLIENT_ID,
     extensionRedirectUri,
   });
 });
@@ -616,18 +589,18 @@ app.post("/api/auth/google-login", async (req, res) => {
     : "";
   const expectedRedirectUri = getAuth0ExtensionRedirectUri();
 
-  if (!hasFullAuthConfig || !code || !codeVerifier || !redirectUri || redirectUri !== expectedRedirectUri) {
+  if (!GOOGLE_OAUTH_CONFIGURED || !code || !codeVerifier || !redirectUri || redirectUri !== expectedRedirectUri) {
     return res.status(400).json({ error: "Invalid Google sign-in request." });
   }
 
   try {
-    const tokenResponse = await fetch(`${authEnv.issuerBaseURL}/oauth/token`, {
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
-        client_id: authEnv.clientID,
-        client_secret: authEnv.clientSecret,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
         code,
         code_verifier: codeVerifier,
         redirect_uri: redirectUri,
@@ -638,7 +611,7 @@ app.post("/api/auth/google-login", async (req, res) => {
       return res.status(401).json({ error: "Google sign-in could not be completed." });
     }
 
-    const profileResponse = await fetch(`${authEnv.issuerBaseURL}/userinfo`, {
+    const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
     const profile = await profileResponse.json().catch(() => ({}));
@@ -916,6 +889,8 @@ app.post("/auth/local/logout", (req, res) => {
   }
   res.json({ success: true });
 });
+
+app.post("/auth/logout", (req, res) => res.redirect(303, "/api/auth/signout?callbackUrl=%2F"));
 
 app.post("/admin/login", async (req, res) => {
   return res.status(410).json({ error: "Use Google sign-in for the admin console." });

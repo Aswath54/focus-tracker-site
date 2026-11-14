@@ -14,12 +14,7 @@ npm start
 
 Then visit `http://localhost:3000`.
 
-For Auth0 login to work, set these environment variables:
-- `SECRET`
-- `BASE_URL`
-- `CLIENT_ID`
-- `CLIENT_SECRET`
-- `ISSUER_BASE_URL`
+For Auth.js Google login, set `AUTH_SECRET`, `AUTH_GOOGLE_ID`, and `AUTH_GOOGLE_SECRET`. Google OAuth credentials can be created in Google Cloud Console; configure the web callback as `https://your-domain.example/api/auth/callback/google` (or `http://localhost:3000/api/auth/callback/google` locally). `AUTH_SECRET` should be a long random value. The legacy `SECRET`, `CLIENT_ID`, and `CLIENT_SECRET` variables remain accepted as fallbacks.
 
 For the admin console, also set:
 - `ADMIN_EMAIL`
@@ -38,7 +33,7 @@ For local-account password recovery, configure the public app URL and SMTP deliv
 
 Password reset links are one-time tokens stored only as SHA-256 hashes and expire after one hour. The forgot-password endpoint returns the same message for existing and non-existing emails. In local development, when SMTP is not configured, the reset link is printed to the server console; production requires SMTP configuration and never exposes the link in the API response.
 
-Google-only authentication also requires `AUTH0_EXTENSION_ID` (or the full `AUTH0_EXTENSION_REDIRECT_URI`) for the Chrome extension callback. The extension callback format is `https://<extension-id>.chromiumapp.org/callback`; add that exact URL to the Auth0 application's Allowed Callback URLs.
+Google-only authentication also requires `AUTH_EXTENSION_ID` (or the full `AUTH_EXTENSION_REDIRECT_URI`) for the Chrome extension callback. The extension callback format is `https://<extension-id>.chromiumapp.org/callback`; add that exact URL to the Google OAuth client's Authorized redirect URIs.
 
 ## Deploying on Railway
 1. Push this repo to GitHub
@@ -46,7 +41,7 @@ Google-only authentication also requires `AUTH0_EXTENSION_ID` (or the full `AUTH
 3. Select this repo — Railway auto-detects Node.js and runs `npm start`
 4. Done! Railway will give you a public URL.
 
-Set the same Auth0 environment variables in Railway, and make sure `BASE_URL` matches the deployed Railway URL.
+Set the same Auth.js environment variables in Railway. Set `AUTH_URL` to the deployed app URL if automatic host detection is unavailable.
 Set the admin variables in Railway too if you want `/admin-login.html` to work.
 
 ## Project Structure
