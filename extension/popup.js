@@ -810,7 +810,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (childSyncForm) {
-    childSyncForm.addEventListener("submit", (e) => {
+    childSyncForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const enteredPassword = childSyncPassword ? childSyncPassword.value : "";
 
@@ -820,6 +820,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       if (!enteredPassword) {
         showError(childSyncError, "Enter the parent password.");
+        return;
+      }
+
+      if (!accountToken) {
+        showError(childSyncError, "Sign in with the same Google account used in Parent mode.");
+        return;
+      }
+
+      try {
+        const profileResponse = await fetch(backendPath("/api/auth/profile"), {
+          headers: { Authorization: `Bearer ${accountToken}` }
+        });
+        const profileData = await profileResponse.json().catch(() => ({}));
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 401) {
+            accountToken = null;
+            accountUser = null;
+            await chrome.storage.local.remove(["accountToken", "accountUser"]);
+            renderAccount();
+          }
+          throw new Error(profileData.error || "Could not refresh synced progress. Sign in again and retry.");
+        }
+        if (profileData.user) {
+          accountUser = profileData.user;
+          await chrome.storage.local.set({ accountUser });
+        }
+        await restoreProgress(profileData.progress);
+      } catch (error) {
+        showError(childSyncError, error.message || "Could not refresh synced progress.");
         return;
       }
 

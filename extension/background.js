@@ -793,7 +793,10 @@ async function handleMessages(request) {
         ? currentUser.accountUser.email.trim().toLowerCase()
         : "";
       if (!storage.parentPassword) {
-        return { success: false, error: "No parent password is synced to this device. Save it again in Parent mode." };
+        return {
+          success: false,
+          error: "No parent password is synced to this Google account. Save it in Parent mode and use the same Google account on both devices."
+        };
       }
       if (storage.parentPassword !== request.parentPassword) {
         return { success: false, error: "Incorrect parent password." };
