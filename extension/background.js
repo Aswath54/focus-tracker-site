@@ -972,6 +972,26 @@ async function handleMessages(request) {
       await endFocusSession(false);
       return { success: true };
     }
+
+    else if (request.type === "RESET_CHILD_SYNC") {
+      if (state.focusMode !== "parent" || !state.accountToken) {
+        return { success: false, error: "Sign in to the linked parent account in Parent mode." };
+      }
+      const result = await requestRemoteFocusSession("/api/focus-session/unlink", {
+        method: "POST",
+        body: { focusMode: "parent" }
+      });
+      if (!result.ok) {
+        return { success: false, error: result.data?.error || result.error || "Could not reset Child Sync." };
+      }
+      await chrome.storage.local.set({
+        childLinked: false,
+        childSyncCompletedAt: 0,
+        childSyncUnlocked: false,
+        modeLocked: false
+      });
+      return { success: true };
+    }
     
     else if (request.type === "UPDATE_WHITELIST") {
       if (state.focusMode === "child" && state.isFocusActive && Date.now() < state.sessionEndTime) {

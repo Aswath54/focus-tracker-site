@@ -423,6 +423,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnParentStopFocus = document.getElementById("btn-parent-stop-focus");
   const parentStopControls = document.getElementById("parent-stop-controls");
   const parentStopError = document.getElementById("parent-stop-error");
+  const btnParentResetSync = document.getElementById("btn-parent-reset-sync");
+  const parentResetSyncError = document.getElementById("parent-reset-sync-error");
   const parentLinkNote = document.getElementById("parent-link-note");
   
   // Unlock Elements
@@ -755,6 +757,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   function updateParentStopControls(isActive) {
     if (parentStopControls) {
       parentStopControls.style.display = isActive ? "flex" : "none";
+    }
+    if (btnParentResetSync) {
+      btnParentResetSync.disabled = isActive;
+      btnParentResetSync.title = isActive
+        ? "Stop the active child session before resetting sync."
+        : "Clear the saved child link so Child Sync can be completed again.";
     }
     if (!isActive && parentStopPassword) {
       parentStopPassword.value = "";
@@ -1391,6 +1399,29 @@ document.addEventListener("DOMContentLoaded", async () => {
           refreshSessionActivity();
         } else {
           showError(parentStopError, response?.error || "Could not stop child session.");
+        }
+      });
+    });
+  }
+
+  if (btnParentResetSync) {
+    btnParentResetSync.addEventListener("click", () => {
+      if (focusMode !== "parent") return;
+      if (!window.confirm("Reset Child Sync? The child will need to sign in and enter the parent sync password again.")) return;
+      if (parentResetSyncError) parentResetSyncError.style.display = "none";
+      btnParentResetSync.disabled = true;
+      chrome.runtime.sendMessage({ type: "RESET_CHILD_SYNC" }, (response) => {
+        if (response?.success) {
+          childLinked = false;
+          childSyncCompletedAt = 0;
+          refreshState();
+          refreshSessionActivity();
+        } else {
+          if (parentResetSyncError) {
+            parentResetSyncError.textContent = response?.error || "Could not reset Child Sync.";
+            parentResetSyncError.style.display = "block";
+          }
+          updateParentStopControls(latestSessionActivityIsActive);
         }
       });
     });

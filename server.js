@@ -921,6 +921,30 @@ app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
   return res.json({ success: true });
 });
 
+app.post("/api/focus-session/unlink", requireExtensionUser, (req, res) => {
+  if (!req.body || req.body.focusMode !== "parent") {
+    return res.status(403).json({ error: "Only Parent mode can reset Child Sync." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  if (sanitizeFocusSession(user.activeFocusSession)) {
+    return res.status(409).json({ error: "Stop the active child session before resetting sync." });
+  }
+
+  user.progress = sanitizeProgress(user.progress || {});
+  user.progress.childLinked = false;
+  user.progress.childSyncCompletedAt = 0;
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true });
+});
+
 app.post("/auth/local/logout", (req, res) => {
   if (req.session) {
     delete req.session.localUser;
