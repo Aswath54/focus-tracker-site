@@ -25,7 +25,9 @@ const ACTIVITY_CATEGORY_DOMAINS = {
   "Search Engines": [
     "google.com", "bing.com", "duckduckgo.com", "search.brave.com", "yahoo.com",
     "yandex.com", "baidu.com", "ecosia.org", "startpage.com", "qwant.com",
-    "ask.com", "aol.com", "naver.com", "seznam.cz"
+    "ask.com", "aol.com", "naver.com", "seznam.cz", "search.yahoo.com", "search.aol.com",
+    "search.naver.com", "search.sogou.com", "so.com", "search.360.cn", "search.naver.com",
+    "swisscows.com", "marginalia-search.com", "kagi.com", "search.gibiru.com"
   ],
   "Education & Learning": [
     "khanacademy.org", "coursera.org", "edx.org", "udemy.com", "quizlet.com",
@@ -33,168 +35,290 @@ const ACTIVITY_CATEGORY_DOMAINS = {
     "w3schools.com", "geeksforgeeks.org", "jstor.org", "scholar.google.com",
     "classroom.google.com", "canvas.instructure.com", "blackboard.com", "moodle.org",
     "desmos.com", "geogebra.org", "chegg.com", "turnitin.com", "ixl.com",
-    "academic.oup.com", "ocw.mit.edu", "openstax.org", "ted.com", "grammarly.com"
+    "academic.oup.com", "ocw.mit.edu", "openstax.org", "ted.com", "grammarly.com",
+    "brilliant.org", "masterclass.com", "skillshare.com", "pluralsight.com", "datacamp.com",
+    "mimo.org", "sololearn.com", "study.com", "sophia.org", "alison.com", "futurelearn.com",
+    "openlearn.open.ac.uk", "open.ac.uk", "mit.edu", "stanford.edu", "harvard.edu",
+    "ocw.tudelft.nl", "phet.colorado.edu", "ck12.org", "commonlit.org", "prodigygame.com",
+    "brainly.com", "studocu.com", "coursehero.com", "getabstract.com", "edutopia.org"
   ],
   "Reference & Knowledge": [
     "wikipedia.org", "britannica.com", "encyclopedia.com", "wikihow.com", "archive.org",
-    "scholarpedia.org", "snopes.com", "factcheck.org", "howstuffworks.com", "reference.com"
+    "scholarpedia.org", "snopes.com", "factcheck.org", "howstuffworks.com", "reference.com",
+    "merriam-webster.com", "dictionary.com", "etymonline.com", "britannica.com",
+    "worldhistory.org", "nationalgeographic.com", "infoplease.com", "encyclopedia.com",
+    "archive.org", "gutenberg.org", "loc.gov", "si.edu", "thecanadianencyclopedia.ca"
   ],
   "Developer Tools": [
     "github.com", "gitlab.com", "bitbucket.org", "stackoverflow.com", "stackexchange.com",
     "npmjs.com", "pypi.org", "crates.io", "rubygems.org", "packagist.org", "docker.com",
     "hub.docker.com", "developer.mozilla.org", "web.dev", "dev.to", "codepen.io",
     "replit.com", "codesandbox.io", "jsfiddle.net", "leetcode.com", "hackerrank.com",
-    "topcoder.com", "kaggle.com", "huggingface.co", "postman.com", "insomnia.rest"
+    "topcoder.com", "kaggle.com", "huggingface.co", "postman.com", "insomnia.rest",
+    "gitkraken.com", "sourcegraph.com", "circleci.com", "travis-ci.com", "snyk.io",
+    "vercel.com", "npmjs.org", "deno.com", "bun.sh", "learn.microsoft.com", "devdocs.io",
+    "w3.org", "spec.whatwg.org", "llvm.org", "gnu.org", "launchpad.net", "gitea.com"
   ],
   "AI & Assistants": [
     "chatgpt.com", "chat.openai.com", "platform.openai.com", "openai.com", "claude.ai",
     "gemini.google.com", "copilot.microsoft.com", "perplexity.ai", "poe.com", "character.ai",
     "you.com", "jasper.ai", "writesonic.com", "midjourney.com", "runwayml.com",
-    "stability.ai", "replicate.com", "cohere.com", "anthropic.com"
+    "stability.ai", "replicate.com", "cohere.com", "anthropic.com", "mistral.ai", "deepseek.com",
+    "deepseek.ai", "grok.com", "x.ai", "meta.ai", "meta.com", "ai.google.dev", "aistudio.google.com",
+    "notebooklm.google.com", "character.ai", "deepai.org", "phind.com", "blackbox.ai",
+    "cursor.com", "windsurf.com", "v0.dev", "bolt.new", "lovable.dev", "suno.com", "udio.com",
+    "elevenlabs.io", "synthesia.io", "heygen.com"
   ],
   "Productivity & Office": [
     "docs.google.com", "sheets.google.com", "slides.google.com", "calendar.google.com",
     "office.com", "microsoft365.com", "word.office.com", "excel.office.com", "powerpoint.office.com",
     "notion.so", "evernote.com", "todoist.com", "calendly.com", "obsidian.md", "airtable.com",
-    "coda.io", "workflowy.com", "reclaim.ai", "zapier.com", "ifttt.com", "docusign.com"
+    "coda.io", "workflowy.com", "reclaim.ai", "zapier.com", "ifttt.com", "docusign.com",
+    "keep.google.com", "forms.google.com", "sites.google.com", "onenote.com", "onenote.office.com",
+    "microsoft.to-do", "todo.microsoft.com", "ticktick.com", "any.do", "milanote.com", "mem.ai",
+    "grammarly.com", "loom.com", "read.ai", "fireflies.ai", "make.com", "n8n.io", "clickup.com"
   ],
   "Project Management": [
     "trello.com", "asana.com", "monday.com", "linear.app", "clickup.com", "jira.com",
     "atlassian.com", "basecamp.com", "smartsheet.com", "meistertask.com", "wrike.com",
-    "height.app", "shortcut.com", "teamwork.com", "redbooth.com"
+    "height.app", "shortcut.com", "teamwork.com", "redbooth.com", "linear.app", "youtrack.com",
+    "asana.com", "wrike.com", "project.microsoft.com", "planner.cloud.microsoft", "notion.so",
+    "basecamp.com", "monday.com", "clubhouse.io", "taskade.com", "fibery.io", "plane.so"
   ],
   "Email": [
     "mail.google.com", "outlook.live.com", "outlook.com", "mail.yahoo.com", "proton.me",
     "protonmail.com", "mail.proton.me", "fastmail.com", "mail.zoho.com", "icloud.com",
-    "mail.com", "gmx.com", "tutanota.com", "hey.com"
+    "mail.com", "gmx.com", "tutanota.com", "hey.com", "mail.google.com", "inbox.google.com",
+    "fastmail.com", "mail.zoho.com", "mail.proton.me", "skiff.com", "runbox.com", "hushmail.com",
+    "outlook.office.com", "e.mail.ru", "mail.qq.com", "mail.163.com"
   ],
   "Communication & Messaging": [
     "slack.com", "discord.com", "telegram.org", "web.telegram.org", "whatsapp.com",
     "web.whatsapp.com", "messenger.com", "signal.org", "mattermost.com", "zulip.com",
-    "rocket.chat", "groupme.com", "viber.com", "wechat.com", "line.me"
+    "rocket.chat", "groupme.com", "viber.com", "wechat.com", "line.me", "teams.microsoft.com",
+    "slack.com", "element.io", "matrix.org", "keybase.io", "threema.ch", "imo.im", "kik.com",
+    "skype.com", "workplace.com", "guilded.gg", "discourse.org", "chat.google.com"
   ],
   "Meetings & Collaboration": [
     "zoom.us", "meet.google.com", "teams.microsoft.com", "webex.com", "gotomeeting.com",
-    "whereby.com", "around.co", "gather.town", "bluejeans.com", "livestorm.co", "demodesk.com"
+    "whereby.com", "around.co", "gather.town", "bluejeans.com", "livestorm.co", "demodesk.com",
+    "meet.jit.si", "gotomeeting.com", "ringcentral.com", "chime.aws", "webex.com", "8x8.com",
+    "remotemeeting.com", "calendly.com", "cal.com", "doodle.com", "riverside.fm"
   ],
   "Cloud Storage": [
     "drive.google.com", "dropbox.com", "box.com", "onedrive.live.com", "mega.io",
-    "pcloud.com", "sync.com", "mediafire.com", "zippyshare.com", "backblaze.com"
+    "pcloud.com", "sync.com", "mediafire.com", "zippyshare.com", "backblaze.com", "icloud.com",
+    "drive.google.com", "photos.google.com", "mega.nz", "wetransfer.com", "send.vis.ee",
+    "filemail.com", "icedrive.net", "filen.io", "tresorit.com", "egnyte.com", "sharepoint.com",
+    "sharepoint.us", "boxcryptor.com", "storage.googleapis.com", "dropboxusercontent.com"
   ],
   "Design & Creative": [
     "figma.com", "canva.com", "adobe.com", "creativecloud.adobe.com", "photoshop.adobe.com",
     "behance.net", "dribbble.com", "sketch.com", "invisionapp.com", "miro.com", "framer.com",
     "webflow.com", "unsplash.com", "pexels.com", "pixabay.com", "coolors.co", "autodesk.com",
-    "blender.org", "artstation.com", "deviantart.com", "procreate.com"
+    "blender.org", "artstation.com", "deviantart.com", "procreate.com", "gimp.org", "krita.org",
+    "instructables.com", "sketchfab.com", "polyhaven.com", "figma.com", "photopea.com", "pixlr.com",
+    "remove.bg", "placeit.net", "creativemarket.com", "istockphoto.com", "gettyimages.com",
+    "freepik.com", "storyset.com", "lottiefiles.com", "descript.com", "capcut.com", "veed.io"
   ],
   "Writing & Publishing": [
     "medium.com", "substack.com", "wordpress.com", "wordpress.org", "blogger.com", "ghost.org",
     "quillbot.com", "hemingwayapp.com", "prowritingaid.com", "scribd.com", "issuu.com",
-    "livejournal.com", "wattpad.com", "reedsy.com", "author.today"
+    "livejournal.com", "wattpad.com", "reedsy.com", "author.today", "write.as", "ghost.io",
+    "royalroad.com", "archiveofourown.org", "fanfiction.net", "inkitt.com", "scribophile.com",
+    "prosecraft.io", "vocal.media", "beehiiv.com", "buttondown.email", "writefreely.org",
+    "pressable.com", "blogspot.com", "telegra.ph", "notion.site"
   ],
   "Finance & Banking": [
     "paypal.com", "stripe.com", "venmo.com", "cash.app", "wise.com", "robinhood.com",
     "fidelity.com", "schwab.com", "vanguard.com", "chase.com", "bankofamerica.com",
     "wellsfargo.com", "capitalone.com", "americanexpress.com", "coinbase.com", "kraken.com",
-    "binance.com", "sofi.com", "mint.com", "creditkarma.com", "nerdwallet.com", "quickbooks.intuit.com"
+    "binance.com", "sofi.com", "mint.com", "creditkarma.com", "nerdwallet.com", "quickbooks.intuit.com",
+    "citi.com", "usbank.com", "pnc.com", "td.com", "ally.com", "discover.com", "barclays.com",
+    "usaa.com", "navyfederal.org", "etrade.com", "schwab.com", "merrilledge.com", "public.com",
+    "cash.app", "squareup.com", "zellepay.com", "wise.com", "remitly.com", "payoneer.com",
+    "crypto.com", "gemini.com", "ledger.com", "tastytrade.com", "empower.com", "rocketmoney.com"
   ],
   "Shopping & Marketplaces": [
     "amazon.com", "ebay.com", "walmart.com", "target.com", "bestbuy.com", "etsy.com",
     "shopify.com", "aliexpress.com", "temu.com", "nike.com", "homedepot.com", "lowes.com",
     "costco.com", "macys.com", "wayfair.com", "zappos.com", "newegg.com", "shein.com",
-    "sephora.com", "ulta.com", "ikea.com", "patagonia.com"
+    "sephora.com", "ulta.com", "ikea.com", "patagonia.com", "etsy.com", "alibaba.com", "shein.com",
+    "wayfair.com", "overstock.com", "chewy.com", "gamestop.com", "dickssportinggoods.com",
+    "rei.com", "kohls.com", "nordstrom.com", "tjmaxx.tjx.com", "asos.com", "hm.com", "zara.com",
+    "uniqlo.com", "adidas.com", "underarmour.com", "apple.com", "store.google.com", "bhphotovideo.com",
+    "adorama.com", "thriftbooks.com", "abebooks.com", "mercari.com", "poshmark.com", "depop.com"
   ],
   "News & Journalism": [
     "nytimes.com", "washingtonpost.com", "theguardian.com", "bbc.com", "cnn.com", "foxnews.com",
     "npr.org", "apnews.com", "reuters.com", "wsj.com", "bloomberg.com", "politico.com",
     "vox.com", "usatoday.com", "latimes.com", "newsweek.com", "time.com", "theatlantic.com",
-    "economist.com", "news.google.com"
+    "economist.com", "news.google.com", "axios.com", "thehill.com", "cbsnews.com", "abcnews.go.com",
+    "nbcnews.com", "aljazeera.com", "dw.com", "france24.com", "cbc.ca", "cbsnews.com", "pbs.org",
+    "propublica.org", "theintercept.com", "apnews.com", "axios.com", "semfor.com", "fortune.com",
+    "forbes.com", "marketwatch.com", "scmp.com", "japantimes.co.jp", "timesofindia.indiatimes.com"
   ],
   "Social Media": [
     "facebook.com", "instagram.com", "x.com", "linkedin.com", "threads.net", "pinterest.com",
     "snapchat.com", "tiktok.com", "mastodon.social", "tumblr.com", "weibo.com", "vk.com",
-    "flickr.com", "nextdoor.com", "bereal.com", "clubhouse.com"
+    "flickr.com", "nextdoor.com", "bereal.com", "clubhouse.com", "bluesky.app", "bsky.social",
+    "threads.com", "mastodon.online", "pixelfed.social", "lemmy.world", "mewe.com", "gab.com",
+    "gettr.com", "truthsocial.com", "vk.com", "ok.ru", "weverse.io", "patreon.com", "ko-fi.com",
+    "buymeacoffee.com", "cara.app", "vsco.co", "strava.com", "letterboxd.com"
   ],
   "Forums & Communities": [
     "reddit.com", "quora.com", "4chan.org", "lemmy.world", "news.ycombinator.com",
     "producthunt.com", "discourse.org", "theconversation.com", "stackexchange.com", "answers.com",
-    "discord.com", "community.cloudflare.com"
+    "discord.com", "community.cloudflare.com", "forums.tomsguide.com", "forums.tomshardware.com",
+    "boards.ie", "resetera.com", "neogaf.com", "lemmy.ml", "lobste.rs", "indiehackers.com",
+    "stackprinter.com", "community.atlassian.com", "support.google.com", "answers.microsoft.com",
+    "discuss.python.org", "community.spiceworks.com", "forum.xda-developers.com", "bogleheads.org"
   ],
   "Video & Streaming": [
     "youtube.com", "netflix.com", "hulu.com", "disneyplus.com", "max.com", "primevideo.com",
     "twitch.tv", "vimeo.com", "dailymotion.com", "crunchyroll.com", "peacocktv.com",
-    "paramountplus.com", "tubi.tv", "pluto.tv", "rumble.com", "kick.com", "watch.nba.com"
+    "paramountplus.com", "tubi.tv", "pluto.tv", "rumble.com", "kick.com", "watch.nba.com",
+    "max.com", "peacocktv.com", "crunchyroll.com", "discoveryplus.com", "fubo.tv", "roku.com",
+    "plex.tv", "curiositystream.com", "nebula.tv", "kanopy.com", "viki.com", "funimation.com",
+    "dazn.com", "fox.com", "abc.com", "cbs.com", "nbc.com", "player.twitch.tv", "bilibili.com",
+    "archive.org/details", "ted.com", "vevo.com", "9now.com.au", "hotstar.com"
   ],
   "Music & Audio": [
     "spotify.com", "music.apple.com", "soundcloud.com", "tidal.com", "deezer.com", "pandora.com",
     "bandcamp.com", "audible.com", "iheart.com", "last.fm", "audiomack.com", "mixcloud.com",
-    "music.youtube.com", "npr.org"
+    "music.youtube.com", "npr.org", "music.amazon.com", "music.youtube.com", "music.tidal.com",
+    "qobuz.com", "anghami.com", "boomplay.com", "genius.com", "ultimate-guitar.com", "songsterr.com",
+    "radio.garden", "podcasts.apple.com", "podcasts.google.com", "pocketcasts.com", "podbean.com",
+    "overcast.fm", "audiobooks.com", "libro.fm", "patreon.com"
   ],
   "Gaming": [
     "steampowered.com", "store.steampowered.com", "epicgames.com", "xbox.com", "playstation.com",
     "nintendo.com", "roblox.com", "minecraft.net", "itch.io", "riotgames.com", "leagueoflegends.com",
     "battle.net", "blizzard.com", "ea.com", "ubisoft.com", "gog.com", "chess.com", "lichess.org",
-    "poki.com", "miniclip.com", "kongregate.com", "store.steampowered.com"
+    "poki.com", "miniclip.com", "kongregate.com", "store.steampowered.com", "itch.io", "gog.com",
+    "humblebundle.com", "nexusmods.com", "modrinth.com", "curseforge.com", "op.gg", "u.gg",
+    "tracker.gg", "faceit.com", "lichess.org", "chess.com", "boardgamearena.com", "coolmathgames.com",
+    "crazygames.com", "y8.com", "poki.com", "friv.com", "jackbox.tv", "playtogether.game"
   ],
   "Sports": [
     "espn.com", "sports.yahoo.com", "nba.com", "nfl.com", "mlb.com", "nhl.com", "fifa.com",
     "olympics.com", "skysports.com", "cbssports.com", "bleacherreport.com", "theathletic.com",
-    "formula1.com", "ufc.com", "wwe.com", "ncaasports.com", "strava.com"
+    "formula1.com", "ufc.com", "wwe.com", "ncaasports.com", "strava.com", "olympics.com",
+    "mlssoccer.com", "premierleague.com", "uefa.com", "fifa.com", "f1.com", "motogp.com",
+    "pga.com", "pgatour.com", "lpga.com", "atptour.com", "wtatennis.com", "worldathletics.org",
+    "flashscore.com", "sofascore.com", "racingpost.com", "bleacherreport.com", "sports-reference.com"
   ],
   "Travel & Transportation": [
     "maps.google.com", "maps.apple.com", "tripadvisor.com", "expedia.com", "booking.com",
     "airbnb.com", "kayak.com", "vrbo.com", "delta.com", "united.com", "southwest.com", "aa.com",
     "uber.com", "lyft.com", "amtrak.com", "marriott.com", "hilton.com", "hotels.com", "skyscanner.com",
-    "rome2rio.com", "trainline.com"
+    "rome2rio.com", "trainline.com", "google.com/maps", "maps.google.com", "waze.com", "openstreetmap.org",
+    "mapquest.com", "rome2rio.com", "skyscanner.net", "kayak.com", "priceline.com", "vrbo.com",
+    "turo.com", "enterprise.com", "hertz.com", "avis.com", "booking.com", "agoda.com", "hostelworld.com",
+    "flightaware.com", "flightradar24.com", "greyhound.com", "flixbus.com", "lyft.com", "uber.com"
   ],
   "Food & Delivery": [
     "doordash.com", "ubereats.com", "grubhub.com", "instacart.com", "postmates.com", "seamless.com",
     "foodnetwork.com", "allrecipes.com", "yelp.com", "opentable.com", "ubereats.com", "hellofresh.com",
-    "blueapron.com", "tasty.co", "seriouseats.com"
+    "blueapron.com", "tasty.co", "seriouseats.com", "doordash.com", "chownow.com", "toasttab.com",
+    "grubhub.com", "ubereats.com", "deliveroo.co.uk", "just-eat.com", "wolt.com", "gopuff.com",
+    "thespruceeats.com", "kingarthurbaking.com", "budgetbytes.com", "eatingwell.com", "yummly.com",
+    "food52.com", "bonappetit.com", "tasteofhome.com", "blueapron.com", "misfitsmarket.com"
   ],
   "Health & Fitness": [
     "webmd.com", "mayoclinic.org", "healthline.com", "cdc.gov", "nih.gov", "myfitnesspal.com",
     "fitbit.com", "onepeloton.com", "calm.com", "headspace.com", "goodrx.com", "healthcare.gov",
-    "everydayhealth.com", "verywellhealth.com", "mindbodyonline.com", "alltrails.com"
+    "everydayhealth.com", "verywellhealth.com", "mindbodyonline.com", "alltrails.com", "who.int",
+    "clevelandclinic.org", "hopkinsmedicine.org", "medlineplus.gov", "health.harvard.edu", "nccih.nih.gov",
+    "psychologytoday.com", "therapyden.com", "betterhelp.com", "talkspace.com", "noom.com", "strava.com",
+    "nike.com", "adidas.com", "garmin.com", "oura.com", "withings.com", "strong.app", "fitbod.me",
+    "yogajournal.com", "sleepfoundation.org", "verywellmind.com", "openpathcollective.org"
   ],
   "Jobs & Careers": [
     "indeed.com", "glassdoor.com", "monster.com", "ziprecruiter.com", "lever.co", "greenhouse.io",
     "workday.com", "dice.com", "wellfound.com", "upwork.com", "fiverr.com", "freelancer.com",
-    "remoteok.com", "weworkremotely.com", "builtin.com", "careers.google.com", "usajobs.gov"
+    "remoteok.com", "weworkremotely.com", "builtin.com", "careers.google.com", "usajobs.gov",
+    "linkedin.com/jobs", "ziprecruiter.com", "simplyhired.com", "careerbuilder.com", "dice.com",
+    "wellfound.com", "otta.com", "ycombinator.com/jobs", "workable.com", "lever.co", "greenhouse.io",
+    "ashbyhq.com", "remote.co", "flexjobs.com", "idealist.org", "governmentjobs.com", "handshake.com",
+    "upwork.com", "fiverr.com", "toptal.com", "contra.com", "freelancer.com"
   ],
   "Business & CRM": [
     "salesforce.com", "hubspot.com", "zendesk.com", "intercom.com", "pipedrive.com", "oracle.com",
     "sap.com", "intuit.com", "xero.com", "freshbooks.com", "gusto.com", "adp.com", "servicenow.com",
-    "docusign.com", "qualtrics.com", "gartner.com"
+    "docusign.com", "qualtrics.com", "gartner.com", "monday.com", "freshdesk.com", "helpscout.com",
+    "intercom.com", "close.com", "salesloft.com", "outreach.io", "gong.io", "stripe.com", "squareup.com",
+    "shopify.com", "quickbooks.intuit.com", "xero.com", "waveapps.com", "zoho.com", "dynamics.com",
+    "netsuite.com", "workday.com", "adp.com", "rippling.com", "deel.com", "remote.com", "ironcladapp.com"
   ],
   "Cloud & Infrastructure": [
     "aws.amazon.com", "console.aws.amazon.com", "cloud.google.com", "console.cloud.google.com",
     "azure.microsoft.com", "portal.azure.com", "digitalocean.com", "linode.com", "heroku.com",
     "vercel.com", "netlify.com", "cloudflare.com", "fastly.com", "firebase.google.com", "render.com",
-    "railway.app", "supabase.com", "fly.io", "terraform.io", "kubernetes.io"
+    "railway.app", "supabase.com", "fly.io", "terraform.io", "kubernetes.io", "aws.amazon.com",
+    "console.aws.amazon.com", "console.cloud.google.com", "cloud.google.com", "azure.microsoft.com",
+    "portal.azure.com", "akamai.com", "vercel.com", "netlify.com", "render.com", "heroku.com",
+    "digitalocean.com", "vultr.com", "ovhcloud.com", "scaleway.com", "linode.com", "hetzner.com",
+    "grafana.com", "datadoghq.com", "newrelic.com", "sentry.io", "statuspage.io", "uptimerobot.com",
+    "docker.com", "hub.docker.com", "ghcr.io", "cloudflare.com", "fastly.com", "hashicorp.com"
   ],
   "Security & Privacy": [
     "1password.com", "lastpass.com", "bitwarden.com", "nordvpn.com", "expressvpn.com", "protonvpn.com",
     "virustotal.com", "haveibeenpwned.com", "privacytools.io", "malwarebytes.com", "avast.com",
-    "kaspersky.com", "okta.com", "auth0.com", "tailscale.com"
+    "kaspersky.com", "okta.com", "auth0.com", "tailscale.com", "1password.ca", "keepersecurity.com",
+    "dashlane.com", "proton.me", "protonvpn.com", "mullvad.net", "surfshark.com", "torproject.org",
+    "privacyguides.org", "eff.org", "haveibeenpwned.com", "securityheaders.com", "urlscan.io",
+    "abuseipdb.com", "shodan.io", "censys.io", "letsencrypt.org", "duo.com", "cloud.google.com/security",
+    "malwarebytes.com", "eset.com", "bitdefender.com", "avira.com", "crowdstrike.com", "1password.com"
   ],
   "Government & Civic": [
     "usa.gov", "irs.gov", "whitehouse.gov", "congress.gov", "courts.gov", "gov.uk", "canada.ca",
-    "service.gov.au", "europa.eu", "usa.gov", "vote.gov", "sos.ca.gov", "ny.gov", "data.gov"
+    "service.gov.au", "europa.eu", "usa.gov", "vote.gov", "sos.ca.gov", "ny.gov", "data.gov",
+    "canada.ca", "gov.uk", "gov.au", "irs.gov", "ssa.gov", "uscis.gov", "state.gov", "travel.state.gov",
+    "benefits.gov", "medicare.gov", "medicaid.gov", "usa.gov", "data.gov", "regulations.gov",
+    "census.gov", "cdc.gov", "fda.gov", "nih.gov", "weather.gov", "congress.gov", "parliament.uk",
+    "europa.eu", "un.org", "worldbank.org", "oecd.org"
   ],
   "Legal": [
     "law.cornell.edu", "justia.com", "findlaw.com", "avvo.com", "legalzoom.com", "nolo.com",
-    "courtlistener.com", "casetext.com", "martindale.com", "americanbar.org"
+    "courtlistener.com", "casetext.com", "martindale.com", "americanbar.org", "law.justia.com",
+    "law.cornell.edu", "law.cornell.edu", "law360.com", "lexisnexis.com", "westlaw.com", "findlaw.com",
+    "nolo.com", "lawyers.com", "lawyers.com", "uscourts.gov", "supremecourt.gov", "legal.thomsonreuters.com"
   ],
   "Real Estate": [
     "zillow.com", "redfin.com", "realtor.com", "trulia.com", "apartments.com", "homes.com",
-    "compass.com", "rightmove.co.uk", "remax.com", "coldwellbanker.com", "opendoor.com"
+    "compass.com", "rightmove.co.uk", "remax.com", "coldwellbanker.com", "opendoor.com", "redfin.com",
+    "zillow.com", "realtor.com", "trulia.com", "zoopla.co.uk", "onthemarket.com", "loopnet.com",
+    "crexi.com", "realtor.ca", "realestate.com.au", "domain.com.au", "propertyfinder.ae",
+    "apartments.com", "rent.com", "rentcafe.com", "hotpads.com", "padmapper.com", "streeteasy.com"
   ],
   "Weather & Time": [
     "weather.com", "accuweather.com", "wunderground.com", "weather.gov", "windy.com",
-    "timeanddate.com", "weatherapi.com", "meteoblue.com", "forecast.weather.gov"
+    "timeanddate.com", "weatherapi.com", "meteoblue.com", "forecast.weather.gov", "weather.gov",
+    "windy.com", "yr.no", "metoffice.gov.uk", "bom.gov.au", "ecowitt.net", "weather.gc.ca",
+    "time.is", "worldtimebuddy.com", "timeanddate.com", "sunrise-sunset.org", "meteostat.net",
+    "ventusky.com", "rainviewer.com", "tomorrow.io"
   ]
 };
+
+// A few hostnames serve several unrelated products. Apply path-specific rules
+// before the broad domain map so the page's actual use wins over its parent site.
+const ACTIVITY_CATEGORY_PATHS = [
+  { host: "linkedin.com", path: /^\/jobs(?:\/|$)/, category: "Jobs & Careers" },
+  { host: "ycombinator.com", path: /^\/jobs(?:\/|$)/, category: "Jobs & Careers" },
+  { host: "youtube.com", path: /^\/(?:music|playlist)(?:\/|$)/, category: "Music & Audio" },
+  { host: "youtube.com", path: /^\/(?:watch|shorts|live|feed)(?:\/|$)/, category: "Video & Streaming" },
+  { host: "google.com", path: /^\/maps(?:\/|$)/, category: "Travel & Transportation" },
+  { host: "google.com", path: /^\/search(?:\/|$)/, category: "Search Engines" },
+  { host: "amazon.com", path: /^\/(?:music|music\/unlimited)(?:\/|$)/, category: "Music & Audio" },
+  { host: "amazon.com", path: /^\/(?:primevideo|gp\/video)(?:\/|$)/, category: "Video & Streaming" },
+  { host: "amazon.com", path: /^\/(?:jobs|hiring)(?:\/|$)/, category: "Jobs & Careers" },
+  { host: "apple.com", path: /^\/(?:apple-music|music)(?:\/|$)/, category: "Music & Audio" },
+  { host: "apple.com", path: /^\/(?:tv|apple-tv)(?:\/|$)/, category: "Video & Streaming" },
+  { host: "archive.org", path: /^\/details(?:\/|$)/, category: "Video & Streaming" },
+  { host: "npr.org", path: /^\/sections\/(?:music|music-news)(?:\/|$)/, category: "Music & Audio" },
+  { host: "npr.org", path: /^\/sections\/(?:news|politics|world)(?:\/|$)/, category: "News & Journalism" }
+];
 let BACKEND_URL = DEFAULT_BACKEND_URL;
 
 async function loadBackendUrl() {
@@ -1147,7 +1271,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function getActivityCategory(domain) {
-    const hostname = normalizeHistoryDomain(domain);
+    const rawValue = String(domain || "").trim().toLowerCase();
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(rawValue.includes("://") ? rawValue : `https://${rawValue}`);
+    } catch (error) {
+      return "Other Websites";
+    }
+    const hostname = normalizeHistoryDomain(parsedUrl.hostname);
+    const pathname = parsedUrl.pathname || "/";
+    const pathMatch = ACTIVITY_CATEGORY_PATHS.find(rule =>
+      (hostname === rule.host || hostname.endsWith(`.${rule.host}`)) && rule.path.test(pathname)
+    );
+    if (pathMatch) return pathMatch.category;
+
     let bestMatch = null;
 
     Object.entries(ACTIVITY_CATEGORY_DOMAINS).forEach(([category, domains]) => {
