@@ -793,6 +793,15 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
 
   const incomingProgress = req.body && req.body.progress;
   user.progress = sanitizeProgress(incomingProgress);
+  const activeSession = sanitizeFocusSession(user.activeFocusSession);
+  if (activeSession) {
+    // An active child session proves the parent-child link was valid when it
+    // started. Keep that link present through account progress refreshes.
+    user.progress.childLinked = true;
+    if (!user.progress.childSyncCompletedAt) {
+      user.progress.childSyncCompletedAt = Number(activeSession.startedAt) || Date.now();
+    }
+  }
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
@@ -812,6 +821,14 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
     delete user.activeFocusSession;
     user.updatedAt = Date.now();
     writeDB(db);
+  } else if (session) {
+    user.progress = sanitizeProgress(user.progress || {});
+    if (!user.progress.childLinked || !user.progress.childSyncCompletedAt) {
+      user.progress.childLinked = true;
+      user.progress.childSyncCompletedAt = Number(session.startedAt) || Date.now();
+      user.updatedAt = Date.now();
+      writeDB(db);
+    }
   }
   return res.json({
     active: Boolean(session),
