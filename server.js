@@ -608,7 +608,32 @@ app.post("/api/auth/google-login", async (req, res) => {
     });
     const tokenData = await tokenResponse.json().catch(() => ({}));
     if (!tokenResponse.ok || !tokenData.access_token) {
-      return res.status(401).json({ error: "Google sign-in could not be completed." });
+      const providerError = typeof tokenData.error === "string" ? tokenData.error : "unknown_error";
+      const providerDescription = typeof tokenData.error_description === "string"
+        ? tokenData.error_description
+        : "";
+      console.warn("Google OAuth token exchange rejected:", {
+        status: tokenResponse.status,
+        error: providerError,
+        description: providerDescription,
+      });
+
+      if (providerError === "invalid_client") {
+        return res.status(401).json({
+          error: "Google rejected the OAuth credentials. Check that AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET belong to the same OAuth client.",
+          providerError,
+        });
+      }
+      if (providerError === "invalid_grant") {
+        return res.status(401).json({
+          error: "Google rejected the authorization code. Confirm the callback URI and retry with a fresh sign-in.",
+          providerError,
+        });
+      }
+      return res.status(401).json({
+        error: "Google sign-in could not be completed.",
+        providerError,
+      });
     }
 
     const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
