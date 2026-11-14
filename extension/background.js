@@ -1022,9 +1022,11 @@ async function handleMessages(request) {
         parentEmail: typeof progress.parentEmail === "string" && progress.parentEmail.trim()
           ? progress.parentEmail.trim().toLowerCase()
           : (existing.parentEmail || ""),
-        childLinked: !!existing.childLinked || !!progress.childLinked,
+        // The signed-in account's sync state is authoritative. Keeping a local
+        // true value here made old links survive after the account was unsynced.
+        childLinked: progress.childLinked === true,
         childSyncUnlocked: !!existing.childSyncUnlocked,
-        childSyncCompletedAt: Number(progress.childSyncCompletedAt) || Number(existing.childSyncCompletedAt) || 0,
+        childSyncCompletedAt: Number(progress.childSyncCompletedAt) || 0,
         modeLocked: !!existing.childSyncUnlocked && !!existing.modeLocked,
         accountToken: typeof progress.accountToken === "string"
           ? progress.accountToken

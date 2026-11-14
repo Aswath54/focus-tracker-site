@@ -2555,7 +2555,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function restoreProgress(progress) {
-    if (!hasMeaningfulProgress(progress)) return;
     await new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: "RESTORE_PROGRESS", progress }, (response) => {
         if (!response || !response.success) {
@@ -2564,30 +2563,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         resolve();
       });
     });
-  }
-
-  function hasMeaningfulProgress(progress) {
-    if (!progress || typeof progress !== "object") return false;
-    const feedback = progress.permanentFeedback;
-    return Boolean(
-      (Array.isArray(progress.allowedUrls) && progress.allowedUrls.length > 0) ||
-      (Array.isArray(progress.whitelistHistory) && progress.whitelistHistory.length > 0) ||
-      (Array.isArray(progress.historyGroups) && progress.historyGroups.length > 0) ||
-      (Array.isArray(progress.feedbackHistory) && progress.feedbackHistory.length > 0) ||
-      (typeof progress.lockPassword === "string" && progress.lockPassword.length > 0) ||
-      (typeof progress.parentPassword === "string" && progress.parentPassword.length > 0) ||
-      (typeof progress.parentEmail === "string" && progress.parentEmail.length > 0) ||
-      progress.childLinked === true ||
-      progress.modeLocked === true ||
-      progress.focusMode === "parent" ||
-      progress.focusMode === "child" ||
-      (feedback && typeof feedback === "object" && (
-        Number(feedback.rating) > 0 ||
-        feedback.thumb === "up" ||
-        feedback.thumb === "down" ||
-        (typeof feedback.comments === "string" && feedback.comments.length > 0)
-      ))
-    );
   }
 
   async function buildProgressPayload() {
