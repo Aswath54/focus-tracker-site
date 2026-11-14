@@ -2423,7 +2423,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     await syncProgress();
   }
 
+  let googleSignInInProgress = false;
+
   async function signInWithGoogle() {
+    if (googleSignInInProgress) return;
+    googleSignInInProgress = true;
+    const originalButtonText = btnAccountGoogle ? btnAccountGoogle.textContent : "Continue with Google";
+    if (btnAccountGoogle) {
+      btnAccountGoogle.disabled = true;
+      btnAccountGoogle.textContent = "Opening Google...";
+      btnAccountGoogle.setAttribute("aria-busy", "true");
+    }
     hideAccountError();
     try {
       const configResponse = await fetch(backendPath("/api/auth/config"));
@@ -2475,7 +2485,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       await finishGoogleAccountLogin(data);
     } catch (e) {
-      showError(accountError, e.message);
+      const message = /only one web auth flow is allowed at a time/i.test(e.message)
+        ? "A Google sign-in window is already open. Finish or close it, then try again."
+        : e.message;
+      showError(accountError, message);
+    } finally {
+      googleSignInInProgress = false;
+      if (btnAccountGoogle) {
+        btnAccountGoogle.disabled = false;
+        btnAccountGoogle.textContent = originalButtonText;
+        btnAccountGoogle.removeAttribute("aria-busy");
+      }
     }
   }
 
