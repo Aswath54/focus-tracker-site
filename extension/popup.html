@@ -146,6 +146,14 @@
           <div id="account-error" class="error-msg" style="display: none;"></div>
         </form>
 
+        <form id="child-logout-form" class="form-group" style="display: none; margin-top: 12px;" novalidate>
+          <p class="permanent-feedback-note">A parent must enter the parent sync password to log out on this synced child device.</p>
+          <input id="child-logout-password" type="password" placeholder="Parent sync password" autocomplete="current-password">
+          <div id="child-logout-error" class="error-msg" style="display: none;"></div>
+          <button id="btn-child-logout-confirm" class="btn btn-primary" type="submit">Confirm Log Out</button>
+          <button id="btn-child-logout-cancel" class="btn btn-secondary" type="button">Cancel</button>
+        </form>
+
         <section id="parent-control-panel" class="card" style="display: none; margin-top: 12px;">
           <div class="whitelist-header">
           <h3>Parent Control</h3>

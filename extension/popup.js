@@ -373,6 +373,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const accountModeNote = document.getElementById("account-mode-note");
   const btnAccountGoogle = document.getElementById("btn-account-google");
   const btnAccountLogout = document.getElementById("btn-account-logout");
+  const childLogoutForm = document.getElementById("child-logout-form");
+  const childLogoutPassword = document.getElementById("child-logout-password");
+  const childLogoutError = document.getElementById("child-logout-error");
+  const btnChildLogoutCancel = document.getElementById("btn-child-logout-cancel");
   const parentControlPanel = document.getElementById("parent-control-panel");
   const childSyncPanel = document.getElementById("child-sync-panel");
   const parentTimerPanel = document.getElementById("parent-timer-panel");
@@ -2679,7 +2683,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (btnAccountLogout) {
-    btnAccountLogout.addEventListener("click", clearAccount);
+    btnAccountLogout.addEventListener("click", () => {
+      if (focusMode === "child" && childSyncUnlocked && childLinked && childSyncCompletedAt) {
+        if (childLogoutError) childLogoutError.style.display = "none";
+        if (childLogoutPassword) childLogoutPassword.value = "";
+        if (childLogoutForm) childLogoutForm.style.display = "flex";
+        childLogoutPassword?.focus();
+        return;
+      }
+      clearAccount();
+    });
+  }
+
+  if (btnChildLogoutCancel) {
+    btnChildLogoutCancel.addEventListener("click", () => {
+      if (childLogoutForm) childLogoutForm.style.display = "none";
+      if (childLogoutError) childLogoutError.style.display = "none";
+      if (childLogoutPassword) childLogoutPassword.value = "";
+    });
+  }
+
+  if (childLogoutForm) {
+    childLogoutForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (childLogoutError) childLogoutError.style.display = "none";
+      chrome.runtime.sendMessage({
+        type: "AUTHORIZE_CHILD_LOGOUT",
+        parentPassword: childLogoutPassword?.value || ""
+      }, (response) => {
+        if (chrome.runtime.lastError || !response?.success) {
+          if (childLogoutError) {
+            childLogoutError.textContent = response?.error || "Could not verify the parent sync password.";
+            childLogoutError.style.display = "block";
+          }
+          return;
+        }
+        childLogoutForm.style.display = "none";
+        clearAccount();
+      });
+    });
   }
 
   async function loadPermanentFeedback() {

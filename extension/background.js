@@ -816,6 +816,23 @@ async function handleMessages(request) {
       });
       return { success: true };
     }
+
+    else if (request.type === "AUTHORIZE_CHILD_LOGOUT") {
+      const storage = await chrome.storage.local.get(["parentPassword", "parentEmail", "accountUser"]);
+      const currentEmail = typeof storage.accountUser?.email === "string"
+        ? storage.accountUser.email.trim().toLowerCase()
+        : "";
+      if (!storage.parentPassword) {
+        return { success: false, error: "The parent sync password is not available on this device." };
+      }
+      if (storage.parentPassword !== request.parentPassword) {
+        return { success: false, error: "Incorrect parent sync password." };
+      }
+      if (!currentEmail || (storage.parentEmail && storage.parentEmail !== currentEmail)) {
+        return { success: false, error: "Sign in with the linked parent account before logging out." };
+      }
+      return { success: true };
+    }
     
     else if (request.type === "CHANGE_PASSWORD") {
       const storage = await chrome.storage.local.get("password");
