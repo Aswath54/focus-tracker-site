@@ -32,8 +32,9 @@ body {
   width: 100vw;
   display: flex;
   justify-content: center;
-  align-items: center;
-  overflow: hidden;
+  align-items: flex-start;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
@@ -43,7 +44,7 @@ body {
   width: min(100vw, 100%);
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
 }
