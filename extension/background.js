@@ -819,20 +819,20 @@ async function handleMessages(request) {
 
     else if (request.type === "REQUEST_ACCOUNT_LOGOUT") {
       const storage = await chrome.storage.local.get([
-        "focusMode", "childSyncUnlocked", "childLinked", "childSyncCompletedAt"
+        "childSyncUnlocked", "childLinked", "childSyncCompletedAt"
       ]);
-      const requiresParentPassword = storage.focusMode === "child" &&
-        !!storage.childSyncUnlocked && !!storage.childLinked && !!storage.childSyncCompletedAt;
+      const requiresParentPassword = !!storage.childSyncUnlocked &&
+        !!storage.childLinked && !!storage.childSyncCompletedAt;
       return { success: true, requiresParentPassword };
     }
 
     else if (request.type === "LOGOUT_ACCOUNT") {
       const storage = await chrome.storage.local.get([
-        "focusMode", "childSyncUnlocked", "childLinked", "childSyncCompletedAt",
+        "childSyncUnlocked", "childLinked", "childSyncCompletedAt",
         "parentPassword", "parentEmail", "accountUser"
       ]);
-      const requiresParentPassword = storage.focusMode === "child" &&
-        !!storage.childSyncUnlocked && !!storage.childLinked && !!storage.childSyncCompletedAt;
+      const requiresParentPassword = !!storage.childSyncUnlocked &&
+        !!storage.childLinked && !!storage.childSyncCompletedAt;
       if (requiresParentPassword) {
         if (!storage.parentPassword) {
           return { success: false, error: "The parent sync password is not available on this device." };
