@@ -392,77 +392,6 @@ function findUserByToken(token) {
   return users.find((user) => user.extensionToken === token.trim()) || null;
 }
 
-function getChildLinks(db) {
-  db.childLinks = Array.isArray(db.childLinks) ? db.childLinks : [];
-  return db.childLinks;
-}
-
-function ensureLegacyChildLink(db, user) {
-  const email = normalizeEmail(user && user.email);
-  const progress = user && user.progress;
-  if (!email || !progress || !progress.childLinked || !Number(progress.childSyncCompletedAt)) return;
-
-  const parentEmail = normalizeEmail(progress.parentEmail || email);
-  // Previous releases used one Google account for both parent and child.
-  if (parentEmail !== email) return;
-  const links = getChildLinks(db);
-  if (!links.some((link) => normalizeEmail(link.parentEmail) === email && normalizeEmail(link.childEmail) === email)) {
-    links.push({ parentEmail: email, childEmail: email, createdAt: Number(progress.childSyncCompletedAt) || Date.now() });
-  }
-}
-
-function getUserChildLinks(db, email) {
-  const normalizedEmail = normalizeEmail(email);
-  const users = Array.isArray(db.users) ? db.users : [];
-  const links = getChildLinks(db);
-  return {
-    children: links
-      .filter((link) => normalizeEmail(link.parentEmail) === normalizedEmail)
-      .map((link) => ({
-        email: normalizeEmail(link.childEmail),
-        linkedAt: Number(link.createdAt) || 0,
-        name: users.find((user) => normalizeEmail(user.email) === normalizeEmail(link.childEmail))?.name || ""
-      })),
-    parents: links
-      .filter((link) => normalizeEmail(link.childEmail) === normalizedEmail)
-      .map((link) => ({
-        email: normalizeEmail(link.parentEmail),
-        linkedAt: Number(link.createdAt) || 0,
-        name: users.find((user) => normalizeEmail(user.email) === normalizeEmail(link.parentEmail))?.name || ""
-      }))
-  };
-}
-
-function findLinkedChildSession(db, childEmail, parentEmail = "") {
-  const normalizedChildEmail = normalizeEmail(childEmail);
-  const normalizedParentEmail = normalizeEmail(parentEmail);
-  const parents = Array.isArray(db.users) ? db.users : [];
-  const candidates = [];
-
-  for (const parent of parents) {
-    const currentParentEmail = normalizeEmail(parent.email);
-    if (normalizedParentEmail && currentParentEmail !== normalizedParentEmail) continue;
-    const linked = getChildLinks(db).some((link) =>
-      normalizeEmail(link.parentEmail) === currentParentEmail &&
-      normalizeEmail(link.childEmail) === normalizedChildEmail
-    );
-    if (!linked) continue;
-
-    const entry = Array.isArray(parent.activeFocusSessions)
-      ? parent.activeFocusSessions.find((item) => normalizeEmail(item.childEmail) === normalizedChildEmail && sanitizeFocusSession(item.session))
-      : null;
-    if (entry) candidates.push({ parent, session: sanitizeFocusSession(entry.session), entry });
-
-    if (currentParentEmail === normalizedChildEmail) {
-      const legacySession = sanitizeFocusSession(parent.activeFocusSession);
-      if (legacySession) candidates.push({ parent, session: legacySession, legacy: true });
-    }
-  }
-
-  candidates.sort((a, b) => Number(b.session.startedAt) - Number(a.session.startedAt));
-  return candidates[0] || null;
-}
-
 function createExtensionToken() {
   return `af_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
@@ -854,107 +783,6 @@ app.get("/api/auth/profile", requireExtensionUser, (req, res) => {
   });
 });
 
-app.get("/api/child-links", requireExtensionUser, (req, res) => {
-  const db = readDB();
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
-  if (!user) return res.status(401).json({ error: "Please log in again." });
-
-  ensureLegacyChildLink(db, user);
-  const links = getUserChildLinks(db, user.email);
-  writeDB(db);
-  return res.json(links);
-});
-
-app.post("/api/child-links", requireExtensionUser, (req, res) => {
-  const parentEmail = normalizeEmail(req.body && req.body.parentEmail);
-  const parentPassword = typeof (req.body && req.body.parentPassword) === "string"
-    ? req.body.parentPassword
-    : "";
-  if (!parentEmail || !parentPassword) {
-    return res.status(400).json({ error: "Enter the parent account email and sync password." });
-  }
-
-  const db = readDB();
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const child = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
-  const parent = db.users.find((item) => normalizeEmail(item.email) === parentEmail);
-  if (!child) return res.status(401).json({ error: "Please log in again." });
-  if (!parent || typeof parent.progress?.parentPassword !== "string") {
-    return res.status(404).json({ error: "No parent account with a saved sync password was found." });
-  }
-  if (parent.progress.parentPassword !== parentPassword) {
-    return res.status(403).json({ error: "Incorrect parent sync password." });
-  }
-
-  const links = getChildLinks(db);
-  const existing = links.find((link) =>
-    normalizeEmail(link.parentEmail) === parentEmail &&
-    normalizeEmail(link.childEmail) === normalizeEmail(child.email)
-  );
-  const linkedAt = existing ? Number(existing.createdAt) || Date.now() : Date.now();
-  if (!existing) links.push({ parentEmail, childEmail: normalizeEmail(child.email), createdAt: linkedAt });
-
-  child.progress = sanitizeProgress(child.progress || {});
-  child.progress.childLinked = true;
-  child.progress.childSyncCompletedAt = linkedAt;
-  child.progress.parentEmail = parentEmail;
-  child.updatedAt = Date.now();
-  writeDB(db);
-  return res.json({ success: true, parentEmail, childEmail: normalizeEmail(child.email), linkedAt });
-});
-
-app.post("/api/child-links/unlink", requireExtensionUser, (req, res) => {
-  const peerEmail = normalizeEmail(req.body && req.body.peerEmail);
-  if (!peerEmail) return res.status(400).json({ error: "Choose the account to unlink." });
-
-  const db = readDB();
-  db.users = Array.isArray(db.users) ? db.users : [];
-  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
-  if (!user) return res.status(401).json({ error: "Please log in again." });
-  const currentEmail = normalizeEmail(user.email);
-  const role = req.body.role === "child" ? "child" : "parent";
-  const parentEmail = role === "parent" ? currentEmail : peerEmail;
-  const childEmail = parentEmail === currentEmail ? peerEmail : currentEmail;
-  if (!getChildLinks(db).some((link) =>
-    normalizeEmail(link.parentEmail) === parentEmail && normalizeEmail(link.childEmail) === childEmail
-  )) {
-    return res.status(404).json({ error: "That parent-child link was not found." });
-  }
-  const activeSession = db.users.some((parent) =>
-    normalizeEmail(parent.email) === parentEmail &&
-    (sanitizeFocusSession(parent.activeFocusSession) || (Array.isArray(parent.activeFocusSessions) && parent.activeFocusSessions.some((entry) =>
-      normalizeEmail(entry.childEmail) === childEmail && sanitizeFocusSession(entry.session)
-    )))
-  );
-  if (activeSession) return res.status(409).json({ error: "Stop the active child session before unlinking this account." });
-
-  const links = getChildLinks(db);
-  const initialLength = links.length;
-  db.childLinks = links.filter((link) => {
-    return !(
-      normalizeEmail(link.parentEmail) === parentEmail &&
-      normalizeEmail(link.childEmail) === childEmail
-    );
-  });
-  if (db.childLinks.length === initialLength) {
-    return res.status(404).json({ error: "That parent-child link was not found." });
-  }
-
-  if (user.progress) {
-    const remaining = getUserChildLinks(db, currentEmail);
-    const hasLinks = remaining.children.length > 0 || remaining.parents.length > 0;
-    user.progress = sanitizeProgress(user.progress);
-    user.progress.childLinked = hasLinks;
-    user.progress.childSyncCompletedAt = hasLinks
-      ? Math.max(0, ...remaining.children.map((link) => link.linkedAt), ...remaining.parents.map((link) => link.linkedAt))
-      : 0;
-  }
-  user.updatedAt = Date.now();
-  writeDB(db);
-  return res.json({ success: true });
-});
-
 app.post("/api/progress", requireExtensionUser, (req, res) => {
   const db = readDB();
   db.users = Array.isArray(db.users) ? db.users : [];
@@ -987,48 +815,27 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  ensureLegacyChildLink(db, user);
-  const currentEmail = normalizeEmail(user.email);
-  const requestedChildEmail = normalizeEmail(req.query.childEmail);
-  const isParentView = req.query.view === "parent" || Boolean(requestedChildEmail);
-  const linkedAccounts = getUserChildLinks(db, currentEmail);
-  const targetChildEmail = isParentView
-    ? requestedChildEmail || linkedAccounts.children[0]?.email || ""
-    : currentEmail;
-  const hasRelationship = isParentView
-    ? linkedAccounts.children.length > 0 && linkedAccounts.children.some((child) => child.email === targetChildEmail)
-    : linkedAccounts.parents.length > 0;
-  if (isParentView && requestedChildEmail && !hasRelationship) {
-    return res.status(403).json({ error: "That child account is not linked to this parent." });
-  }
-
-  const foundSession = hasRelationship
-    ? findLinkedChildSession(db, targetChildEmail, isParentView ? currentEmail : "")
-    : null;
-  const session = foundSession?.session || null;
-  if (!session && user.activeFocusSession && currentEmail === targetChildEmail) {
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (!session && user.activeFocusSession) {
     user.lastFocusActivity = sanitizeSessionActivity(user.activeFocusSession.activity);
     delete user.activeFocusSession;
     user.updatedAt = Date.now();
     writeDB(db);
+  } else if (session) {
+    user.progress = sanitizeProgress(user.progress || {});
+    if (!user.progress.childLinked || !user.progress.childSyncCompletedAt) {
+      user.progress.childLinked = true;
+      user.progress.childSyncCompletedAt = Number(session.startedAt) || Date.now();
+      user.updatedAt = Date.now();
+      writeDB(db);
+    }
   }
-  const activity = session
-    ? session.activity
-    : isParentView
-      ? sanitizeSessionActivity(user.lastFocusActivityByChild && user.lastFocusActivityByChild[targetChildEmail])
-      : sanitizeSessionActivity(foundSession?.parent.lastFocusActivityByChild && foundSession.parent.lastFocusActivityByChild[targetChildEmail] || user.lastFocusActivity);
-  const linkedAt = isParentView
-    ? linkedAccounts.children.find((child) => child.email === targetChildEmail)?.linkedAt || 0
-    : Math.max(0, ...linkedAccounts.parents.map((parent) => parent.linkedAt));
   return res.json({
     active: Boolean(session),
     session,
-    activity,
-    childLinked: isParentView ? hasRelationship : linkedAccounts.parents.length > 0,
-    childSyncCompletedAt: linkedAt,
-    selectedChildEmail: isParentView ? targetChildEmail : "",
-    linkedChildEmails: linkedAccounts.children.map((child) => child.email),
-    linkedParentEmails: linkedAccounts.parents.map((parent) => parent.email)
+    activity: session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity),
+    childLinked: Boolean(user.progress && user.progress.childLinked),
+    childSyncCompletedAt: Number(user.progress && user.progress.childSyncCompletedAt) || 0,
   });
 });
 
@@ -1040,32 +847,13 @@ app.post("/api/focus-session/activity", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  const childEmail = normalizeEmail(user.email);
-  const parentLinks = getUserChildLinks(db, childEmail).parents;
-  let foundSession = null;
-  for (const link of parentLinks) {
-    foundSession = findLinkedChildSession(db, childEmail, link.email);
-    if (foundSession && foundSession.session.sessionId === req.body?.sessionId) break;
-    foundSession = null;
-  }
-  if (!foundSession && parentLinks.some((link) => link.email === childEmail)) {
-    const legacySession = sanitizeFocusSession(user.activeFocusSession);
-    if (legacySession?.sessionId === req.body?.sessionId) {
-      foundSession = { parent: user, session: legacySession, legacy: true };
-    }
-  }
-  if (!foundSession || foundSession.session.sessionId !== req.body?.sessionId) {
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (!session || session.sessionId !== req.body?.sessionId) {
     return res.status(409).json({ error: "No matching focus session is active." });
   }
 
-  foundSession.session.activity = sanitizeSessionActivity(req.body?.activity);
-  if (foundSession.legacy) {
-    foundSession.parent.activeFocusSession.activity = foundSession.session.activity;
-  } else {
-    const entry = foundSession.parent.activeFocusSessions.find((item) => item.session.sessionId === req.body.sessionId);
-    if (entry) entry.session.activity = foundSession.session.activity;
-  }
-  foundSession.parent.updatedAt = Date.now();
+  user.activeFocusSession.activity = sanitizeSessionActivity(req.body?.activity);
+  user.updatedAt = Date.now();
   writeDB(db);
   return res.json({ success: true });
 });
@@ -1087,16 +875,13 @@ app.post("/api/focus-session/start", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  ensureLegacyChildLink(db, user);
-  const childEmail = normalizeEmail(req.body.childEmail || user.email);
-  const linkedChildren = getUserChildLinks(db, normalizeEmail(user.email)).children;
-  if (!linkedChildren.some((child) => child.email === childEmail)) {
-    return res.status(409).json({ error: "Select a child account that has completed Child Sync." });
+  if (!user.progress || !user.progress.childLinked) {
+    return res.status(409).json({ error: "Complete child sync before starting a child session." });
   }
 
-  const existingSession = findLinkedChildSession(db, childEmail);
+  const existingSession = sanitizeFocusSession(user.activeFocusSession);
   if (existingSession) {
-    return res.status(409).json({ error: "A child focus session is already running for this account.", session: existingSession.session });
+    return res.status(409).json({ error: "A child focus session is already running.", session: existingSession });
   }
 
   const startedAt = Date.now();
@@ -1109,15 +894,8 @@ app.post("/api/focus-session/start", requireExtensionUser, (req, res) => {
       : [],
     activity: {},
   };
-  user.activeFocusSessions = Array.isArray(user.activeFocusSessions) ? user.activeFocusSessions : [];
-  user.activeFocusSessions = user.activeFocusSessions.filter((item) =>
-    normalizeEmail(item.childEmail) !== childEmail && sanitizeFocusSession(item.session)
-  );
-  user.activeFocusSessions.push({ childEmail, session: focusSession });
-  user.lastFocusActivityByChild = user.lastFocusActivityByChild && typeof user.lastFocusActivityByChild === "object"
-    ? user.lastFocusActivityByChild
-    : {};
-  user.lastFocusActivityByChild[childEmail] = {};
+  user.lastFocusActivity = {};
+  user.activeFocusSession = focusSession;
   user.updatedAt = startedAt;
   writeDB(db);
   return res.json({ success: true, session: focusSession });
@@ -1135,24 +913,10 @@ app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  const childEmail = normalizeEmail(req.body.childEmail || user.email);
-  ensureLegacyChildLink(db, user);
-  if (!getUserChildLinks(db, normalizeEmail(user.email)).children.some((child) => child.email === childEmail)) {
-    return res.status(403).json({ error: "This parent account is not linked to that child." });
-  }
-  const foundSession = findLinkedChildSession(db, childEmail);
-  if (!foundSession) return res.status(409).json({ error: "No active child session was found." });
-  if (foundSession.legacy) {
-    foundSession.parent.lastFocusActivity = foundSession.session.activity;
-    delete foundSession.parent.activeFocusSession;
-  } else {
-    foundSession.parent.lastFocusActivityByChild = foundSession.parent.lastFocusActivityByChild || {};
-    foundSession.parent.lastFocusActivityByChild[childEmail] = foundSession.session.activity;
-    foundSession.parent.activeFocusSessions = foundSession.parent.activeFocusSessions.filter((item) =>
-      item.session.sessionId !== foundSession.session.sessionId
-    );
-  }
-  foundSession.parent.updatedAt = Date.now();
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  user.lastFocusActivity = session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity);
+  delete user.activeFocusSession;
+  user.updatedAt = Date.now();
   writeDB(db);
   return res.json({ success: true });
 });
@@ -1169,21 +933,13 @@ app.post("/api/focus-session/unlink", requireExtensionUser, (req, res) => {
     return res.status(401).json({ error: "Please log in again." });
   }
 
-  ensureLegacyChildLink(db, user);
-  const childEmail = normalizeEmail(req.body.childEmail || user.email);
-  if (findLinkedChildSession(db, childEmail, normalizeEmail(user.email))) {
+  if (sanitizeFocusSession(user.activeFocusSession)) {
     return res.status(409).json({ error: "Stop the active child session before resetting sync." });
   }
-  const currentEmail = normalizeEmail(user.email);
-  const links = getChildLinks(db);
-  const beforeCount = links.length;
-  db.childLinks = links.filter((link) => !(
-    normalizeEmail(link.parentEmail) === currentEmail && normalizeEmail(link.childEmail) === childEmail
-  ));
-  if (db.childLinks.length === beforeCount) return res.status(404).json({ error: "That child is not linked to this parent." });
+
   user.progress = sanitizeProgress(user.progress || {});
-  user.progress.childLinked = getChildLinks(db).some((link) => normalizeEmail(link.parentEmail) === currentEmail);
-  if (!user.progress.childLinked) user.progress.childSyncCompletedAt = 0;
+  user.progress.childLinked = false;
+  user.progress.childSyncCompletedAt = 0;
   user.updatedAt = Date.now();
   writeDB(db);
   return res.json({ success: true });

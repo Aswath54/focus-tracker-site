@@ -467,13 +467,9 @@ async function applyLocalFocusSession(session, remote = false) {
 }
 
 async function startRemoteFocusSession(durationSeconds, allowedUrls) {
-  const { selectedChildEmail } = await chrome.storage.local.get("selectedChildEmail");
-  if (!selectedChildEmail) {
-    return { success: false, error: "Choose a linked child account first." };
-  }
   const result = await requestRemoteFocusSession("/api/focus-session/start", {
     method: "POST",
-    body: { focusMode: "parent", childEmail: selectedChildEmail, durationSeconds, allowedUrls }
+    body: { focusMode: "parent", durationSeconds, allowedUrls }
   });
   if (result.skipped) {
     return { success: false, error: result.error };
@@ -488,10 +484,9 @@ async function startRemoteFocusSession(durationSeconds, allowedUrls) {
 }
 
 async function stopRemoteFocusSession() {
-  const { selectedChildEmail } = await chrome.storage.local.get("selectedChildEmail");
   const result = await requestRemoteFocusSession("/api/focus-session/stop", {
     method: "POST",
-    body: { focusMode: "parent", childEmail: selectedChildEmail }
+    body: { focusMode: "parent" }
   });
   if (result.skipped) {
     return { success: false, error: result.error };
@@ -541,8 +536,7 @@ async function syncRemoteFocusSession() {
     "childSyncUnlocked",
     "childSyncCompletedAt",
     "isFocusActive",
-    "remoteSessionId",
-    "selectedChildEmail"
+    "remoteSessionId"
   ]);
   if (!local.accountToken) {
     return { success: true, skipped: true };
@@ -550,10 +544,7 @@ async function syncRemoteFocusSession() {
 
   await publishRemoteFocusActivity();
 
-  const focusSessionPath = local.focusMode === "parent"
-    ? `/api/focus-session?view=parent${local.selectedChildEmail ? `&childEmail=${encodeURIComponent(local.selectedChildEmail)}` : ""}`
-    : "/api/focus-session";
-  const result = await requestRemoteFocusSession(focusSessionPath);
+  const result = await requestRemoteFocusSession("/api/focus-session");
   if (result.skipped || !result.ok) {
     return { success: false, error: result.error || result.data?.error || "Could not sync the child session." };
   }
@@ -564,34 +555,10 @@ async function syncRemoteFocusSession() {
       ? Number(result.data.childSyncCompletedAt) || 0
       : Number(local.childSyncCompletedAt) || 0;
     const hasRemoteChildSync = result.data.childLinked && childSyncCompletedAt > 0;
-    const syncState = await chrome.storage.local.get(["linkedParentCredentials", "parentPassword", "parentEmail"]);
-    const remoteParents = Array.isArray(result.data.linkedParentEmails)
-      ? result.data.linkedParentEmails
-      : [];
-    let linkedParentCredentials = (Array.isArray(syncState.linkedParentCredentials) ? syncState.linkedParentCredentials : [])
-      .filter((entry) => remoteParents.includes(entry.email));
-    if (!linkedParentCredentials.length && syncState.parentPassword && remoteParents.includes(syncState.parentEmail)) {
-      linkedParentCredentials = [{ email: syncState.parentEmail, password: syncState.parentPassword }];
-    }
-    const primaryCredential = linkedParentCredentials[0];
     await chrome.storage.local.set({
       childLinked: result.data.childLinked,
       childSyncCompletedAt: hasRemoteChildSync ? childSyncCompletedAt : 0,
-      ...(local.focusMode === "child" ? {
-        ...(hasRemoteChildSync
-          ? {
-              linkedParentCredentials,
-              parentPassword: primaryCredential?.password || "",
-              parentEmail: primaryCredential?.email || ""
-            }
-          : {
-              childSyncUnlocked: false,
-              modeLocked: false,
-              parentPassword: "",
-              parentEmail: "",
-              linkedParentCredentials: []
-            })
-      } : hasRemoteChildSync ? {} : { childSyncUnlocked: false, modeLocked: false })
+      ...(hasRemoteChildSync ? {} : { childSyncUnlocked: false, modeLocked: false })
     });
   }
 
@@ -787,12 +754,9 @@ async function handleMessages(request) {
     }
 
     if (request.type === "GET_SESSION_ACTIVITY") {
-      const localMode = await chrome.storage.local.get(["focusMode", "accountToken", "selectedChildEmail"]);
+      const localMode = await chrome.storage.local.get(["focusMode", "accountToken"]);
       if (localMode.focusMode === "parent" && localMode.accountToken) {
-        const childQuery = localMode.selectedChildEmail
-          ? `&childEmail=${encodeURIComponent(localMode.selectedChildEmail)}`
-          : "";
-        const remoteResult = await requestRemoteFocusSession(`/api/focus-session?view=parent${childQuery}`);
+        const remoteResult = await requestRemoteFocusSession("/api/focus-session");
         if (remoteResult.ok && remoteResult.data) {
           return {
             success: true,
@@ -828,14 +792,6 @@ async function handleMessages(request) {
       };
     }
 
-    if (request.type === "GET_CHILD_LINKS") {
-      const result = await requestRemoteFocusSession("/api/child-links");
-      if (!result.ok) {
-        return { success: false, error: result.data?.error || result.error || "Could not load linked accounts." };
-      }
-      return { success: true, children: result.data?.children || [], parents: result.data?.parents || [] };
-    }
-
     const state = await getExtensionState();
     
     if (request.type === "SET_PASSWORD") {
@@ -863,32 +819,34 @@ async function handleMessages(request) {
     }
 
     else if (request.type === "VERIFY_PARENT_PASSWORD") {
-      const parentEmail = typeof request.parentEmail === "string" ? request.parentEmail.trim().toLowerCase() : "";
-      if (!parentEmail || typeof request.parentPassword !== "string" || !request.parentPassword) {
-        return { success: false, error: "Enter the parent account email and sync password." };
+      const storage = await chrome.storage.local.get(["parentPassword", "parentEmail"]);
+      const currentUser = await chrome.storage.local.get(["accountUser"]);
+      const currentEmail = typeof currentUser.accountUser?.email === "string"
+        ? currentUser.accountUser.email.trim().toLowerCase()
+        : "";
+      if (!storage.parentPassword) {
+        return {
+          success: false,
+          error: "No parent password is synced to this Google account. Save it in Parent mode and use the same Google account on both devices."
+        };
       }
-      const remoteResult = await requestRemoteFocusSession("/api/child-links", {
-        method: "POST",
-        body: { parentEmail, parentPassword: request.parentPassword }
-      });
-      if (!remoteResult.ok) {
-        return { success: false, error: remoteResult.data?.error || remoteResult.error || "Could not link this parent account." };
+      if (storage.parentPassword !== request.parentPassword) {
+        return { success: false, error: "Incorrect parent password." };
       }
-      const childSyncCompletedAt = Number(remoteResult.data?.linkedAt) || Date.now();
-      const local = await chrome.storage.local.get(["linkedParentCredentials"]);
-      const credentials = Array.isArray(local.linkedParentCredentials) ? local.linkedParentCredentials : [];
-      const nextCredentials = credentials.filter((entry) => entry.email !== parentEmail);
-      nextCredentials.push({ email: parentEmail, password: request.parentPassword });
+      if (!currentEmail) {
+        return { success: false, error: "Sign in with Google before unlocking sync." };
+      }
+      if (storage.parentEmail && storage.parentEmail !== currentEmail) {
+        return { success: false, error: "Log in with the parent account to unlock sync." };
+      }
       await chrome.storage.local.set({
         childLinked: true,
         childSyncUnlocked: true,
-        childSyncCompletedAt,
+        childSyncCompletedAt: Date.now(),
         modeLocked: true,
-        parentEmail,
-        parentPassword: request.parentPassword,
-        linkedParentCredentials: nextCredentials
+        parentEmail: storage.parentEmail || currentEmail
       });
-      return { success: true, parentEmail, childSyncCompletedAt };
+      return { success: true };
     }
 
     else if (request.type === "REQUEST_ACCOUNT_LOGOUT") {
@@ -903,21 +861,22 @@ async function handleMessages(request) {
     else if (request.type === "LOGOUT_ACCOUNT") {
       const storage = await chrome.storage.local.get([
         "childSyncUnlocked", "childLinked", "childSyncCompletedAt",
-        "parentPassword", "parentEmail", "linkedParentCredentials"
+        "parentPassword", "parentEmail", "accountUser"
       ]);
       const requiresParentPassword = !!storage.childSyncUnlocked &&
         !!storage.childLinked && !!storage.childSyncCompletedAt;
       if (requiresParentPassword) {
-        const credentials = Array.isArray(storage.linkedParentCredentials) && storage.linkedParentCredentials.length
-          ? storage.linkedParentCredentials
-          : storage.parentPassword
-            ? [{ email: storage.parentEmail, password: storage.parentPassword }]
-            : [];
-        if (!credentials.length) {
+        if (!storage.parentPassword) {
           return { success: false, error: "The parent sync password is not available on this device." };
         }
-        if (!credentials.some((entry) => entry.password === request.parentPassword)) {
+        if (storage.parentPassword !== request.parentPassword) {
           return { success: false, error: "Incorrect parent sync password." };
+        }
+        const currentEmail = typeof storage.accountUser?.email === "string"
+          ? storage.accountUser.email.trim().toLowerCase()
+          : "";
+        if (!currentEmail || (storage.parentEmail && storage.parentEmail !== currentEmail)) {
+          return { success: false, error: "Sign in with the linked parent account before logging out." };
         }
       }
       await chrome.storage.local.remove(["accountToken", "accountUser", "modeLocked"]);
@@ -975,15 +934,7 @@ async function handleMessages(request) {
         if (!remoteResult.success) {
           return remoteResult;
         }
-        const selected = await chrome.storage.local.get(["selectedChildEmail", "parentSessionPasswords"]);
-        const sessionPasswords = selected.parentSessionPasswords && typeof selected.parentSessionPasswords === "object"
-          ? selected.parentSessionPasswords
-          : {};
-        sessionPasswords[selected.selectedChildEmail] = request.sessionPassword;
-        await chrome.storage.local.set({
-          parentSessionPassword: request.sessionPassword,
-          parentSessionPasswords: sessionPasswords
-        });
+        await chrome.storage.local.set({ parentSessionPassword: request.sessionPassword });
         return { success: true, sessionEndTime: remoteResult.session.endTime, remote: true };
       }
 
@@ -1003,16 +954,11 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "STOP_SESSION") {
-      const storage = await chrome.storage.local.get([
-        "password", "parentPassword", "parentSessionPassword", "parentSessionPasswords",
-        "selectedChildEmail", "focusMode"
-      ]);
+      const storage = await chrome.storage.local.get(["password", "parentPassword", "parentSessionPassword", "focusMode"]);
       if (storage.focusMode === "child") {
         return { success: false, error: "Only Parent mode can stop a locked session." };
       }
-      const controlPassword = storage.focusMode === "parent"
-        ? storage.parentSessionPasswords?.[storage.selectedChildEmail] || storage.parentSessionPassword
-        : storage.password;
+      const controlPassword = storage.focusMode === "parent" ? storage.parentSessionPassword : storage.password;
       if (!controlPassword || controlPassword !== request.password) {
         return { success: false, error: "Incorrect password. Stay focused!" };
       }
@@ -1022,14 +968,6 @@ async function handleMessages(request) {
         if (!remoteResult.success) {
           return remoteResult;
         }
-        const sessionPasswords = storage.parentSessionPasswords && typeof storage.parentSessionPasswords === "object"
-          ? { ...storage.parentSessionPasswords }
-          : {};
-        delete sessionPasswords[storage.selectedChildEmail];
-        await chrome.storage.local.set({
-          parentSessionPasswords: sessionPasswords,
-          parentSessionPassword: Object.values(sessionPasswords)[0] || ""
-        });
       }
       await endFocusSession(false);
       return { success: true };
@@ -1039,65 +977,20 @@ async function handleMessages(request) {
       if (state.focusMode !== "parent" || !state.accountToken) {
         return { success: false, error: "Sign in to the linked parent account in Parent mode." };
       }
-      const { selectedChildEmail } = await chrome.storage.local.get("selectedChildEmail");
-      if (!selectedChildEmail) return { success: false, error: "Choose a linked child account first." };
-      const result = await requestRemoteFocusSession("/api/child-links/unlink", {
+      const result = await requestRemoteFocusSession("/api/focus-session/unlink", {
         method: "POST",
-        body: { peerEmail: selectedChildEmail, role: "parent" }
+        body: { focusMode: "parent" }
       });
       if (!result.ok) {
         return { success: false, error: result.data?.error || result.error || "Could not reset Child Sync." };
       }
-      const links = await requestRemoteFocusSession("/api/child-links");
-      if (!links.ok) {
-        return { success: false, error: links.data?.error || links.error || "Could not refresh linked child accounts." };
-      }
-      const children = Array.isArray(links.data?.children) ? links.data.children : [];
-      const linkedAt = Math.max(0, ...children.map((child) => Number(child.linkedAt) || 0));
       await chrome.storage.local.set({
-        childLinked: children.length > 0,
-        childSyncCompletedAt: linkedAt
+        childLinked: false,
+        childSyncCompletedAt: 0,
+        childSyncUnlocked: false,
+        modeLocked: false
       });
-      const passwords = await chrome.storage.local.get("parentSessionPasswords");
-      const sessionPasswords = passwords.parentSessionPasswords && typeof passwords.parentSessionPasswords === "object"
-        ? { ...passwords.parentSessionPasswords }
-        : {};
-      delete sessionPasswords[selectedChildEmail];
-      await chrome.storage.local.set({ parentSessionPasswords: sessionPasswords });
-      return { success: true, children };
-    }
-
-    else if (request.type === "UNLINK_PARENT_ACCOUNT") {
-      if (state.focusMode !== "child" || !state.accountToken) {
-        return { success: false, error: "Sign in to the child account in Child mode." };
-      }
-      const peerEmail = typeof request.parentEmail === "string" ? request.parentEmail.trim().toLowerCase() : "";
-      if (!peerEmail) return { success: false, error: "Choose a parent account to unlink." };
-      const result = await requestRemoteFocusSession("/api/child-links/unlink", {
-        method: "POST",
-        body: { peerEmail, role: "child" }
-      });
-      if (!result.ok) {
-        return { success: false, error: result.data?.error || result.error || "Could not unlink the parent account." };
-      }
-      const links = await requestRemoteFocusSession("/api/child-links");
-      if (!links.ok) return { success: false, error: links.data?.error || links.error || "Could not refresh linked accounts." };
-      const parents = Array.isArray(links.data?.parents) ? links.data.parents : [];
-      const credentials = await chrome.storage.local.get("linkedParentCredentials");
-      const remainingCredentials = (Array.isArray(credentials.linkedParentCredentials) ? credentials.linkedParentCredentials : [])
-        .filter((entry) => parents.some((parent) => parent.email === entry.email));
-      const primaryCredential = remainingCredentials[0];
-      const linkedAt = Math.max(0, ...parents.map((parent) => Number(parent.linkedAt) || 0));
-      await chrome.storage.local.set({
-        childLinked: parents.length > 0,
-        childSyncCompletedAt: linkedAt,
-        childSyncUnlocked: parents.length > 0,
-        modeLocked: parents.length > 0,
-        linkedParentCredentials: remainingCredentials,
-        parentPassword: primaryCredential?.password || "",
-        parentEmail: primaryCredential?.email || ""
-      });
-      return { success: true, parents };
+      return { success: true };
     }
     
     else if (request.type === "UPDATE_WHITELIST") {

@@ -10,13 +10,13 @@ AuraFocus is a Chromium browser extension that helps you stay focused by startin
 
 **Parent mode** is used to control a linked child device. The parent signs in with Google, creates a Sync password, and starts the child’s timer remotely. The parent browser does not become blocked. Only Parent mode can stop a locked child session.
 
-**Child mode** is used on the device that should be controlled. The child signs in with their own Google account, selects Child mode, and enters a parent account email and that parent’s Sync password. After linking, the child device receives the parent’s focus sessions and applies the blocking locally. The child cannot stop a locked session.
+**Child mode** is used on the device that should be controlled. The child signs in with Google, selects Child mode, and enters the Sync password created by the parent. After sync is unlocked, the child device receives the parent’s focus sessions and applies the blocking locally. The child cannot stop a locked session.
 
 ### How synchronization works
 
-The extension stores parent-child links through the AuraFocus website. Each child account can link to multiple parents, and each parent account can link to multiple children. A child links a parent by entering that parent’s Google email and Sync password. The parent chooses a linked child from the Parent Timer panel before starting a session. The child device checks for an active parent session periodically and applies the allowed-site list locally.
+The extension syncs the account’s settings and focus-session status through the AuraFocus website. The parent and child devices must use the same Google account. The child device checks for an active parent session periodically. When a parent starts a timer, the child device applies the allowed-site list and starts its local lock.
 
-The Sync password is separate from the Google password. It is created in Parent mode and entered in Child mode to link the child account to that parent. Repeat the link process to connect another parent. Either side can remove an individual link when no child session is active.
+The Sync password is separate from the Google password. It is created in Parent mode and entered once in Child mode to unlock synchronization on that device. Keep it private and do not share it with the child if the child should not be able to change parent settings.
 
 ### Sessions and feedback
 
@@ -52,10 +52,10 @@ The download is generated from the current extension files on the website. Do no
 2. Select **Self**, **Parent**, or **Child** mode.
 3. Choose **Continue with Google** and complete sign-in.
 4. In Self mode, create a session password and configure your allowed websites.
-5. For Parent/Child use, sign in to each parent and child device with that person’s Google account.
-6. On each Parent account, select Parent mode and create a Sync password.
-7. On the Child device, select Child mode and enter the parent’s Google email and Sync password. Repeat for each parent account that should manage this child.
-8. On the Parent device, choose a child account in the Parent Timer panel, choose the timer, and click **Start Child Session**. Repeat the link process from each child account to connect multiple children to the same parent.
+5. For Parent/Child use, sign in on both devices with the same Google account.
+6. On the Parent device, select Parent mode and create the Sync password.
+7. On the Child device, select Child mode and enter that Sync password.
+8. On the Parent device, choose the timer and click **Start Child Session**.
 
 ### Important notes
 

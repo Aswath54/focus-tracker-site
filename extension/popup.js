@@ -381,14 +381,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const childSyncPanel = document.getElementById("child-sync-panel");
   const parentTimerPanel = document.getElementById("parent-timer-panel");
   const childSyncForm = document.getElementById("child-sync-form");
-  const childSyncParentEmail = document.getElementById("child-sync-parent-email");
   const childSyncPassword = document.getElementById("child-sync-password");
   const childSyncError = document.getElementById("child-sync-error");
   const childSyncSuccess = document.getElementById("child-sync-success");
-  const childParentManagement = document.getElementById("child-parent-management");
-  const childParentSelect = document.getElementById("child-parent-select");
-  const btnChildUnlinkParent = document.getElementById("btn-child-unlink-parent");
-  const childUnlinkError = document.getElementById("child-unlink-error");
   const parentPasswordForm = document.getElementById("parent-password-form");
   const parentPasswordInput = document.getElementById("parent-password");
   const parentPasswordConfirm = document.getElementById("parent-password-confirm");
@@ -431,7 +426,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnParentResetSync = document.getElementById("btn-parent-reset-sync");
   const parentResetSyncError = document.getElementById("parent-reset-sync-error");
   const parentLinkNote = document.getElementById("parent-link-note");
-  const parentChildSelect = document.getElementById("parent-child-select");
   
   // Unlock Elements
   const unlockPasswordInput = document.getElementById("unlock-password-input");
@@ -512,8 +506,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let modeLocked = false;
   let childLinked = false;
   let childSyncCompletedAt = 0;
-  let linkedChildren = [];
-  let linkedParents = [];
   let latestSessionActivity = {};
   let latestSessionActivityIsActive = false;
   let latestSessionActivityIsParentView = false;
@@ -529,7 +521,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize view
   setupPasswordToggles();
   await loadAccount();
-  await refreshLinkedAccounts();
   await loadSessionFeedbackState();
   await loadPermanentFeedback();
   await refreshState();
@@ -583,7 +574,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Render Whitelist
       renderWhitelist(currentAllowedUrls);
       if (parentSessionActivityPanel) {
-        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && hasSelectedChildLink() && hasParentPassword ? "block" : "none";
+        parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
       }
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
@@ -600,16 +591,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       secWhitelist.style.display = isChildMode ? "none" : "block";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
-        parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!linkedChildren.length || !hasParentPassword) ? "block" : "none";
+        parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" ? "block" : "none";
-      }
-      if (childParentManagement) {
-        childParentManagement.style.display = isChildMode && hasSignedInAccount && linkedParents.length ? "flex" : "none";
+        childSyncPanel.style.display = isParentMode || !hasSignedInAccount ? "none" : state.focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt) ? "block" : "none";
       }
       if (parentTimerPanel) {
-        const showParentTimer = isParentMode && hasSignedInAccount && hasSelectedChildLink() && hasParentPassword;
+        const showParentTimer = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword;
         parentTimerPanel.style.display = showParentTimer ? "block" : "none";
       }
       updateParentTimerControls();
@@ -669,9 +657,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secFeedback) secFeedback.style.display = "none";
             if (secWhitelist) secWhitelist.style.display = "none";
             if (secChangePassword) secChangePassword.style.display = "none";
-            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!linkedChildren.length || !hasParentPassword) ? "block" : "none";
+            if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
-            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && hasSelectedChildLink() && hasParentPassword ? "block" : "none";
+            if (parentTimerPanel) parentTimerPanel.style.display = hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
             updateParentTimerControls();
             updateStatus(false, "Parent");
           }
@@ -742,14 +730,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateParentTimerControls() {
-    const selectedChildEmail = parentChildSelect?.value || "";
-    const hasSelectedChild = hasSelectedChildLink();
-    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && hasSelectedChild && !!childSyncCompletedAt && hasParentPassword;
+    const canStartParentSession = focusMode === "parent" && !!(accountToken && accountUser) && !!childLinked && !!childSyncCompletedAt && hasParentPassword;
     if (parentLinkNote) {
       if (canStartParentSession) {
         parentLinkNote.style.display = "none";
       } else {
-        parentLinkNote.textContent = !hasSelectedChild
+        parentLinkNote.textContent = !childLinked
           ? "Link a child first by completing child sync before starting a session."
           : "Set a parent password before starting a child session.";
         parentLinkNote.style.display = "block";
@@ -759,18 +745,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnParentStartFocus.disabled = !canStartParentSession;
       btnParentStartFocus.title = canStartParentSession
         ? "Start the child focus session"
-        : !hasSelectedChild ? "Complete child sync before starting a session" : "Set a parent password before starting a session";
+        : !childLinked ? "Complete child sync before starting a session" : "Set a parent password before starting a session";
     }
     parentPresetBtns.forEach((button) => {
       button.disabled = !canStartParentSession;
     });
     if (parentCustomMinutesInput) parentCustomMinutesInput.disabled = !canStartParentSession;
     if (btnParentSetCustom) btnParentSetCustom.disabled = !canStartParentSession;
-  }
-
-  function hasSelectedChildLink() {
-    const selectedChildEmail = parentChildSelect?.value || "";
-    return !!selectedChildEmail && linkedChildren.some((child) => child.email === selectedChildEmail);
   }
 
   function updateParentStopControls(isActive) {
@@ -828,26 +809,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
       if (parentControlPanel) {
-        parentControlPanel.style.display = focusMode === "parent" && (!linkedChildren.length || !hasParentPassword) ? "block" : "none";
+        parentControlPanel.style.display = focusMode === "parent" && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
       }
       if (childSyncPanel) {
-        childSyncPanel.style.display = focusMode === "child" && !!(accountToken && accountUser) ? "block" : "none";
-      }
-      if (childParentManagement) {
-        childParentManagement.style.display = focusMode === "child" && !!(accountToken && accountUser) && linkedParents.length ? "flex" : "none";
+        childSyncPanel.style.display = focusMode === "child" && (!childSyncUnlocked || !childLinked || !childSyncCompletedAt) && !!(accountToken && accountUser) ? "block" : "none";
       }
       if (parentTimerPanel) {
-        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && hasSelectedChildLink() && hasParentPassword ? "block" : "none";
+        parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
       }
       updateParentTimerControls();
-    });
-  }
-
-  if (parentChildSelect) {
-    parentChildSelect.addEventListener("change", async () => {
-      await chrome.storage.local.set({ selectedChildEmail: parentChildSelect.value });
-      updateParentTimerControls();
-      refreshSessionActivity();
     });
   }
 
@@ -855,7 +825,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     childSyncForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const enteredPassword = childSyncPassword ? childSyncPassword.value : "";
-      const enteredParentEmail = childSyncParentEmail ? childSyncParentEmail.value.trim().toLowerCase() : "";
 
       if (focusMode !== "child") {
         showError(childSyncError, "Switch to child mode first.");
@@ -865,32 +834,74 @@ document.addEventListener("DOMContentLoaded", async () => {
         showError(childSyncError, "Enter the parent password.");
         return;
       }
-      if (!enteredParentEmail) {
-        showError(childSyncError, "Enter the parent's Google account email.");
+
+      if (!accountToken) {
+        showError(childSyncError, "Sign in with the same Google account used in Parent mode.");
         return;
       }
 
-      if (!accountToken) {
-        showError(childSyncError, "Sign in with this child's Google account first.");
+      try {
+        const profileResponse = await fetch(backendPath("/api/auth/profile"), {
+          headers: { Authorization: `Bearer ${accountToken}` }
+        });
+        const profileData = await profileResponse.json().catch(() => ({}));
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 401) {
+            accountToken = null;
+            accountUser = null;
+            await chrome.storage.local.remove(["accountToken", "accountUser"]);
+            renderAccount();
+          }
+          throw new Error(profileData.error || "Could not refresh synced progress. Sign in again and retry.");
+        }
+        if (profileData.user) {
+          accountUser = profileData.user;
+          await chrome.storage.local.set({ accountUser });
+        }
+        const syncedProgress = profileData.progress && typeof profileData.progress === "object"
+          ? profileData.progress
+          : {};
+        const syncedParentPassword = typeof syncedProgress.parentPassword === "string"
+          ? syncedProgress.parentPassword
+          : "";
+        const syncedParentEmail = typeof syncedProgress.parentEmail === "string"
+          ? syncedProgress.parentEmail.trim().toLowerCase()
+          : "";
+        await restoreProgress(syncedProgress);
+        await chrome.storage.local.set({
+          parentPassword: syncedParentPassword,
+          parentEmail: syncedParentEmail
+        });
+        parentPassword = syncedParentPassword;
+        hasParentPassword = Boolean(syncedParentPassword);
+        if (!syncedParentPassword) {
+          showError(
+            childSyncError,
+            "No parent password is saved to this Google account. Save it in Parent mode using the same Google account, then retry."
+          );
+          return;
+        }
+      } catch (error) {
+        showError(childSyncError, error.message || "Could not refresh synced progress.");
         return;
       }
 
       chrome.runtime.sendMessage({
         type: "VERIFY_PARENT_PASSWORD",
-        parentEmail: enteredParentEmail,
         parentPassword: enteredPassword
       }, async (response) => {
         if (response && response.success) {
           childSyncUnlocked = true;
           modeLocked = true;
           childLinked = true;
-          childSyncCompletedAt = Number(response.childSyncCompletedAt) || Date.now();
+          childSyncCompletedAt = Date.now();
           if (childSyncPassword) childSyncPassword.value = "";
           childSyncError.style.display = "none";
           if (childSyncSuccess) {
             childSyncSuccess.style.display = "block";
             setTimeout(() => childSyncSuccess.style.display = "none", 2500);
           }
+          if (childSyncPanel) childSyncPanel.style.display = "none";
           if (focusModeSelect) {
             focusModeSelect.disabled = true;
           }
@@ -900,10 +911,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             childSyncUnlocked: true,
             childSyncCompletedAt
           });
-          if (childSyncParentEmail) childSyncParentEmail.value = "";
           updateFocusModeHelp();
           renderAccount();
-          await refreshLinkedAccounts();
           await syncProgress();
           refreshState();
         } else {
@@ -1128,7 +1137,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       chrome.runtime.sendMessage({
         type: "START_SESSION",
-        childEmail: parentChildSelect?.value || "",
         durationSeconds: parentDurationSeconds,
         allowedUrls: currentAllowedUrls,
         sessionPassword
@@ -1397,17 +1405,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (btnParentResetSync) {
-    btnParentResetSync.addEventListener("click", async () => {
+    btnParentResetSync.addEventListener("click", () => {
       if (focusMode !== "parent") return;
-      const childEmail = parentChildSelect?.value || "";
-      if (!childEmail) return;
-      if (!window.confirm(`Unlink ${childEmail}? That child will need to enter the parent sync password again.`)) return;
+      if (!window.confirm("Reset Child Sync? The child will need to sign in and enter the parent sync password again.")) return;
       if (parentResetSyncError) parentResetSyncError.style.display = "none";
       btnParentResetSync.disabled = true;
-      chrome.runtime.sendMessage({ type: "RESET_CHILD_SYNC" }, async (response) => {
+      chrome.runtime.sendMessage({ type: "RESET_CHILD_SYNC" }, (response) => {
         if (response?.success) {
-          await refreshLinkedAccounts();
-          await refreshState();
+          childLinked = false;
+          childSyncCompletedAt = 0;
+          refreshState();
           refreshSessionActivity();
         } else {
           if (parentResetSyncError) {
@@ -1415,28 +1422,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             parentResetSyncError.style.display = "block";
           }
           updateParentStopControls(latestSessionActivityIsActive);
-        }
-      });
-    });
-  }
-
-  if (btnChildUnlinkParent) {
-    btnChildUnlinkParent.addEventListener("click", async () => {
-      if (focusMode !== "child") return;
-      const parentEmail = childParentSelect?.value || "";
-      if (!parentEmail) return;
-      if (!window.confirm(`Unlink parent account ${parentEmail}?`)) return;
-      if (childUnlinkError) childUnlinkError.style.display = "none";
-      btnChildUnlinkParent.disabled = true;
-      chrome.runtime.sendMessage({ type: "UNLINK_PARENT_ACCOUNT", parentEmail }, async (response) => {
-        btnChildUnlinkParent.disabled = false;
-        if (response?.success) {
-          await refreshLinkedAccounts();
-          await refreshState();
-          refreshSessionActivity();
-        } else if (childUnlinkError) {
-          childUnlinkError.textContent = response?.error || "Could not unlink the parent account.";
-          childUnlinkError.style.display = "block";
         }
       });
     });
@@ -2465,65 +2450,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  async function refreshLinkedAccounts() {
-    if (!accountToken || !parentChildSelect) return;
-    await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "GET_CHILD_LINKS" }, async (response) => {
-        if (chrome.runtime.lastError || !response?.success) {
-          console.warn("Could not load linked parent and child accounts:", response?.error || chrome.runtime.lastError?.message);
-          resolve();
-          return;
-        }
-
-        linkedChildren = Array.isArray(response.children) ? response.children : [];
-        linkedParents = Array.isArray(response.parents) ? response.parents : [];
-        const saved = await chrome.storage.local.get("selectedChildEmail");
-        const selectedChild = linkedChildren.find((child) => child.email === saved.selectedChildEmail) || linkedChildren[0] || null;
-        parentChildSelect.replaceChildren();
-        if (linkedChildren.length) {
-          linkedChildren.forEach((child) => {
-            const option = document.createElement("option");
-            option.value = child.email;
-            option.textContent = child.name ? `${child.name} (${child.email})` : child.email;
-            parentChildSelect.appendChild(option);
-          });
-          parentChildSelect.value = selectedChild.email;
-        } else {
-          const option = document.createElement("option");
-          option.value = "";
-          option.textContent = "No linked child accounts";
-          parentChildSelect.appendChild(option);
-        }
-
-        if (childParentSelect) {
-          childParentSelect.replaceChildren();
-          linkedParents.forEach((parent) => {
-            const option = document.createElement("option");
-            option.value = parent.email;
-            option.textContent = parent.name ? `${parent.name} (${parent.email})` : parent.email;
-            childParentSelect.appendChild(option);
-          });
-          if (childParentManagement) {
-            childParentManagement.style.display = focusMode === "child" && linkedParents.length ? "flex" : "none";
-          }
-        }
-
-        childLinked = linkedChildren.length > 0 || linkedParents.length > 0;
-        childSyncCompletedAt = Math.max(0, ...linkedChildren.map((child) => child.linkedAt), ...linkedParents.map((parent) => parent.linkedAt));
-        await chrome.storage.local.set({
-          selectedChildEmail: selectedChild?.email || "",
-          childLinked,
-          childSyncCompletedAt
-        });
-        updateParentTimerControls();
-        if (parentTimerPanel) {
-          parentTimerPanel.style.display = focusMode === "parent" && !!(accountToken && accountUser) && linkedChildren.length > 0 && childSyncCompletedAt && hasParentPassword ? "block" : "none";
-        }
-        resolve();
-      });
-    });
-  }
-
   function renderAccount() {
     if (!accountForm || !btnAccountLogout) return;
 
@@ -2534,7 +2460,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     } else {
       accountForm.style.display = "flex";
       btnAccountLogout.style.display = "none";
-      if (accountStatusText) accountStatusText.textContent = "";
     }
   }
 
@@ -2580,7 +2505,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     await chrome.storage.local.set({ accountToken, accountUser });
     await restoreProgress(data.progress);
     renderAccount();
-    await refreshLinkedAccounts();
     await refreshState();
     await syncProgress();
   }

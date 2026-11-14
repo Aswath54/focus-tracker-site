@@ -8,9 +8,9 @@ AuraFocus is a Chromium browser extension that starts timed focus sessions and b
 
 - **Self:** Personal use. Set allowed websites, create a session password, and start your own timer.
 - **Parent:** Sign in with Google, create a Sync password, and control a linked child device remotely. Only Parent mode can stop a locked child session.
-- **Child:** Sign in with the child’s Google account, select Child mode, and enter a parent account email and the Sync password created by that parent. The child device receives and applies the parent’s sessions.
+- **Child:** Sign in with Google, select Child mode, and enter the Sync password created by the parent. The child device receives and applies the parent’s sessions.
 
-Each child account can link to multiple parent accounts, and each parent can link to multiple children. Repeat the Child Sync form with each parent’s email and Sync password. The Parent Timer panel lets a parent select which linked child receives a session.
+The Sync password is separate from the Google password. It is created in Parent mode and entered once in Child mode to unlock synchronization.
 
 ## Download and Install
 
@@ -28,9 +28,9 @@ Each child account can link to multiple parent accounts, and each parent can lin
 1. Click the AuraFocus icon and select Self, Parent, or Child mode.
 2. Select **Continue with Google** and complete sign-in.
 3. In Self mode, create a session password.
-4. For Parent/Child use, sign in to each device with that person’s Google account.
-5. On each Parent account, create a Sync password.
-6. On the Child device, enter a parent’s email and Sync password in Child Sync. Repeat to add other parents.
-7. On the Parent device, select a linked child, choose a timer, and click **Start Child Session**. Repeat Child Sync from additional child accounts to link multiple children.
+4. For Parent/Child use, sign in on both devices with the same Google account.
+5. On the Parent device, create the Sync password.
+6. On the Child device, enter that Sync password to unlock sync.
+7. On the Parent device, choose a timer and click **Start Child Session**.
 
 The extension must remain installed and enabled. The child device needs an internet connection to receive parent sessions. Only the Parent device can stop a synced locked session. After updating the extension, reload it from `chrome://extensions`.

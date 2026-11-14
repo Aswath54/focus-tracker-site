@@ -38,7 +38,6 @@
         <div class="account-header">
           <div>
             <h3>Account Sync</h3>
-            <p id="account-status-text" class="permanent-feedback-note" style="margin: 6px 0 0;"></p>
           </div>
           <button id="btn-account-logout" class="btn btn-secondary btn-small" type="button" style="display: none;">Log Out</button>
         </div>
@@ -56,12 +55,11 @@
 
         <section id="child-sync-panel" class="card" style="display: none; margin-top: 12px;">
           <div class="whitelist-header">
-            <h3>Parent Links</h3>
-          <div class="whitelist-tooltip">Link this child account to a parent account</div>
+            <h3>Child Sync</h3>
+            <div class="whitelist-tooltip">Enter the parent password to unlock sync</div>
           </div>
-          <p class="permanent-feedback-note">Enter a parent account email and sync password. Repeat to link this child account to another parent.</p>
+          <p class="permanent-feedback-note">Use the parent password here to unlock account syncing on this device.</p>
           <form id="child-sync-form" class="form-group">
-            <input type="email" id="child-sync-parent-email" placeholder="Parent Google account email" autocomplete="email" required>
             <div class="input-wrapper">
               <input type="password" id="child-sync-password" placeholder="Parent password">
               <button type="button" class="toggle-password-btn" aria-label="Toggle password visibility">
@@ -69,15 +67,9 @@
               </button>
             </div>
             <div id="child-sync-error" class="error-msg" style="display: none;"></div>
-            <div id="child-sync-success" class="success-msg" style="display: none;">Parent account linked. Sync unlocked.</div>
-            <button id="btn-child-sync" class="btn btn-secondary" type="submit">Link Parent Account</button>
+            <div id="child-sync-success" class="success-msg" style="display: none;">Parent password accepted. Sync unlocked.</div>
+            <button id="btn-child-sync" class="btn btn-secondary" type="submit">Unlock Sync</button>
           </form>
-          <div id="child-parent-management" class="form-group" style="display: none; margin-top: 12px;">
-            <label for="child-parent-select">Linked parent accounts</label>
-            <select id="child-parent-select"></select>
-            <button id="btn-child-unlink-parent" class="btn btn-secondary btn-small" type="button">Unlink Selected Parent</button>
-            <div id="child-unlink-error" class="error-msg" style="display: none;"></div>
-          </div>
         </section>
 
         <section id="parent-timer-panel" class="card" style="display: none; margin-top: 12px;">
@@ -87,8 +79,6 @@
           </div>
           <p class="permanent-feedback-note">Use this panel to set the timer for the child. The child cannot change it.</p>
           <p class="permanent-feedback-note" id="parent-link-note">Link a child first by completing child sync before starting a session.</p>
-          <label for="parent-child-select">Child account</label>
-          <select id="parent-child-select" aria-label="Choose child account"></select>
           <div class="timer-options">
             <button class="parent-preset-btn preset-btn active" data-seconds="1500" type="button">25m</button>
             <button class="parent-preset-btn preset-btn" data-seconds="3000" type="button">50m</button>
@@ -114,7 +104,7 @@
             <button id="btn-parent-stop-focus" class="btn btn-secondary" type="button">Stop Child Session</button>
           </div>
           <div id="parent-stop-error" class="error-msg" style="display: none;"></div>
-          <button id="btn-parent-reset-sync" class="btn btn-secondary btn-small" type="button" style="margin-top: 12px;">Unlink Selected Child</button>
+          <button id="btn-parent-reset-sync" class="btn btn-secondary btn-small" type="button" style="margin-top: 12px;">Reset Child Sync</button>
           <div id="parent-reset-sync-error" class="error-msg" style="display: none;"></div>
         </section>
 
@@ -169,9 +159,9 @@
         <section id="parent-control-panel" class="card" style="display: none; margin-top: 12px;">
           <div class="whitelist-header">
           <h3>Parent Control</h3>
-          <div class="whitelist-tooltip">Create the password child accounts use to link to you</div>
+          <div class="whitelist-tooltip">Create the password used to sync the child device</div>
           </div>
-          <p class="permanent-feedback-note">Set a sync password. Each child signs in with their own Google account, then enters your Google email and this password in Child mode.</p>
+          <p class="permanent-feedback-note">Set the password the child will use for the session lock.</p>
           <form id="parent-password-form" class="form-group">
             <div class="input-wrapper">
             <input type="password" id="parent-password" placeholder="Sync password" minlength="4">
