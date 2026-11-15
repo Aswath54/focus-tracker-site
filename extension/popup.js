@@ -893,33 +893,55 @@ document.addEventListener("DOMContentLoaded", async () => {
         type: "VERIFY_PARENT_PASSWORD",
         parentPassword: enteredPassword
       }, async (response) => {
-        if (response && response.success) {
-          childSyncUnlocked = true;
-          modeLocked = true;
-          childLinked = true;
-          childSyncCompletedAt = Number(response.childSyncCompletedAt) || Date.now();
-          if (childSyncPassword) childSyncPassword.value = "";
-          childSyncError.style.display = "none";
-          if (childSyncSuccess) {
-            childSyncSuccess.style.display = "block";
-            setTimeout(() => childSyncSuccess.style.display = "none", 2500);
-          }
-          if (childSyncPanel) childSyncPanel.style.display = "none";
-          if (focusModeSelect) {
-            focusModeSelect.disabled = true;
-          }
-          await chrome.storage.local.set({
-            modeLocked: true,
-            childLinked: true,
-            childSyncUnlocked: true,
-            childSyncCompletedAt
-          });
-          updateFocusModeHelp();
-          renderAccount();
-          refreshState();
-        } else {
-          showError(childSyncError, response.error || "Incorrect parent password.");
+        if (!response?.success) {
+          showError(childSyncError, response?.error || "Incorrect parent password.");
+          return;
         }
+
+        const confirmedState = await new Promise((resolve) => {
+          chrome.runtime.sendMessage({ type: "GET_STATE" }, (stateResponse) => {
+            if (chrome.runtime.lastError || !stateResponse?.success) {
+              resolve(null);
+              return;
+            }
+            resolve(stateResponse.state);
+          });
+        });
+        const confirmedAt = Number(confirmedState?.childSyncCompletedAt) || 0;
+        if (
+          confirmedState?.focusMode !== "child" ||
+          !confirmedState.childLinked ||
+          !confirmedState.childSyncUnlocked ||
+          !confirmedAt
+        ) {
+          showError(
+            childSyncError,
+            "The password was accepted, but this device could not confirm the sync. Make sure both devices use the same Google account, reload the extension, and try again."
+          );
+          return;
+        }
+
+        childSyncUnlocked = true;
+        modeLocked = true;
+        childLinked = true;
+        childSyncCompletedAt = confirmedAt;
+        if (childSyncPassword) childSyncPassword.value = "";
+        childSyncError.style.display = "none";
+        if (childSyncSuccess) {
+          childSyncSuccess.style.display = "block";
+          setTimeout(() => childSyncSuccess.style.display = "none", 2500);
+        }
+        if (childSyncPanel) childSyncPanel.style.display = "none";
+        if (focusModeSelect) focusModeSelect.disabled = true;
+        await chrome.storage.local.set({
+          modeLocked: true,
+          childLinked: true,
+          childSyncUnlocked: true,
+          childSyncCompletedAt
+        });
+        updateFocusModeHelp();
+        renderAccount();
+        refreshState();
       });
     });
   }
