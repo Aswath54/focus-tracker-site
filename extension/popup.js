@@ -897,7 +897,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           childSyncUnlocked = true;
           modeLocked = true;
           childLinked = true;
-          childSyncCompletedAt = Date.now();
+          childSyncCompletedAt = Number(response.childSyncCompletedAt) || Date.now();
           if (childSyncPassword) childSyncPassword.value = "";
           childSyncError.style.display = "none";
           if (childSyncSuccess) {
@@ -916,7 +916,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
           updateFocusModeHelp();
           renderAccount();
-          await syncProgress();
           refreshState();
         } else {
           showError(childSyncError, response.error || "Incorrect parent password.");
