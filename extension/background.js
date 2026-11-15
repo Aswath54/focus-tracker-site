@@ -974,7 +974,8 @@ async function handleMessages(request) {
     }
 
     else if (request.type === "RESET_CHILD_SYNC") {
-      if (state.focusMode !== "parent" || !state.accountToken) {
+      const account = await chrome.storage.local.get("accountToken");
+      if (state.focusMode !== "parent" || !account.accountToken) {
         return { success: false, error: "Sign in to the linked parent account in Parent mode." };
       }
       const result = await requestRemoteFocusSession("/api/focus-session/unlink", {
