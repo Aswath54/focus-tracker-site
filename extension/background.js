@@ -839,25 +839,14 @@ async function handleMessages(request) {
       if (storage.parentEmail && storage.parentEmail !== currentEmail) {
         return { success: false, error: "Log in with the parent account to unlock sync." };
       }
-      const linkResult = await requestRemoteFocusSession("/api/focus-session/link", {
-        method: "POST",
-        body: { focusMode: "child", parentPassword: request.parentPassword }
-      });
-      if (!linkResult.ok) {
-        return {
-          success: false,
-          error: linkResult.data?.error || linkResult.error || "Could not verify Child Sync with the account server."
-        };
-      }
-      const childSyncCompletedAt = Number(linkResult.data?.childSyncCompletedAt) || Date.now();
       await chrome.storage.local.set({
         childLinked: true,
         childSyncUnlocked: true,
-        childSyncCompletedAt,
+        childSyncCompletedAt: Date.now(),
         modeLocked: true,
         parentEmail: storage.parentEmail || currentEmail
       });
-      return { success: true, childSyncCompletedAt };
+      return { success: true };
     }
 
     else if (request.type === "REQUEST_ACCOUNT_LOGOUT") {
