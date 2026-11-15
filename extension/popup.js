@@ -495,7 +495,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Local popup states
   let activeDurationSeconds = 1500; // Default 25m
   let isWhitelistUnlocked = false; // Temp unlock for this popup instance
-  let refreshStateRequestId = 0;
   let countdownInterval = null;
   let currentAllowedUrls = [];
   let feedbackUserId = null;
@@ -537,9 +536,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // --- STATE AND VIEW MANAGEMENT ---
   async function refreshState() {
-    const requestId = ++refreshStateRequestId;
     chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-      if (requestId !== refreshStateRequestId) return;
       if (chrome.runtime.lastError || !response || !response.success) {
         console.error("Could not fetch state from background service.");
         return;
@@ -563,7 +560,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
       const childSyncReady = childSyncUnlocked && childLinked && childSyncCompletedAt > 0;
-      if (!childSyncReady && childSyncSuccess) childSyncSuccess.style.display = "none";
       const isAccountMode = isParentMode || isChildMode;
       const hasSignedInAccount = !!(accountToken && accountUser);
       const accountRequired = isAccountMode && !hasSignedInAccount;
@@ -648,7 +644,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const now = Date.now();
       if (isParentMode) {
         chrome.storage.local.get(["showFeedbackPrompt", "feedbackPromptSessionId"], (feedbackState) => {
-          if (requestId !== refreshStateRequestId) return;
           if (feedbackState.showFeedbackPrompt && feedbackState.feedbackPromptSessionId) {
             showSection(secFeedback);
             if (secWhitelist) secWhitelist.style.display = "block";
@@ -903,8 +898,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           return;
         }
 
-        // Ignore any older popup refresh that started before this verified link.
-        refreshStateRequestId += 1;
         const confirmedState = await new Promise((resolve) => {
           chrome.runtime.sendMessage({ type: "GET_STATE" }, (stateResponse) => {
             if (chrome.runtime.lastError || !stateResponse?.success) {
