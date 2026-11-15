@@ -533,7 +533,6 @@ async function syncRemoteFocusSession() {
   const local = await chrome.storage.local.get([
     "accountToken",
     "focusMode",
-    "childLinked",
     "childSyncUnlocked",
     "childSyncCompletedAt",
     "isFocusActive",
@@ -556,25 +555,11 @@ async function syncRemoteFocusSession() {
       ? Number(result.data.childSyncCompletedAt) || 0
       : Number(local.childSyncCompletedAt) || 0;
     const hasRemoteChildSync = result.data.childLinked && childSyncCompletedAt > 0;
-    const latestLocal = await chrome.storage.local.get([
-      "childLinked", "childSyncUnlocked", "childSyncCompletedAt"
-    ]);
-    const staleUnlinkResponse = !hasRemoteChildSync && latestLocal.childLinked && (
-      !local.childLinked ||
-      Number(latestLocal.childSyncCompletedAt) > Number(local.childSyncCompletedAt) ||
-      (latestLocal.childSyncUnlocked && !local.childSyncUnlocked)
-    );
-    if (!staleUnlinkResponse) {
-      await chrome.storage.local.set({
-        childLinked: result.data.childLinked,
-        childSyncCompletedAt: hasRemoteChildSync ? childSyncCompletedAt : 0,
-        ...(hasRemoteChildSync && local.focusMode === "child"
-          ? { childSyncUnlocked: true, modeLocked: true }
-          : hasRemoteChildSync
-            ? {}
-            : { childSyncUnlocked: false, modeLocked: false })
-      });
-    }
+    await chrome.storage.local.set({
+      childLinked: result.data.childLinked,
+      childSyncCompletedAt: hasRemoteChildSync ? childSyncCompletedAt : 0,
+      ...(hasRemoteChildSync ? {} : { childSyncUnlocked: false, modeLocked: false })
+    });
   }
 
   if (local.focusMode !== "child" || !local.childSyncUnlocked || !local.childSyncCompletedAt) {
