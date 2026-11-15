@@ -792,7 +792,14 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   }
 
   const incomingProgress = req.body && req.body.progress;
+  const previousProgress = sanitizeProgress(user.progress || {});
   user.progress = sanitizeProgress(incomingProgress);
+  // Child Sync is server-owned state. A stale extension on another device
+  // must not restore an old link marker through a general progress update.
+  user.progress.childLinked = previousProgress.childLinked && previousProgress.childSyncCompletedAt > 0;
+  user.progress.childSyncCompletedAt = user.progress.childLinked
+    ? previousProgress.childSyncCompletedAt
+    : 0;
   const activeSession = sanitizeFocusSession(user.activeFocusSession);
   if (activeSession) {
     // An active child session proves the parent-child link was valid when it
@@ -919,6 +926,31 @@ app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
   user.updatedAt = Date.now();
   writeDB(db);
   return res.json({ success: true });
+});
+
+app.post("/api/focus-session/link", requireExtensionUser, (req, res) => {
+  if (req.body?.focusMode !== "child") {
+    return res.status(403).json({ error: "Only Child mode can complete Child Sync." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) {
+    return res.status(401).json({ error: "Please log in again." });
+  }
+
+  const progress = sanitizeProgress(user.progress || {});
+  if (!progress.parentPassword || progress.parentPassword !== req.body?.parentPassword) {
+    return res.status(403).json({ error: "Incorrect parent sync password." });
+  }
+
+  progress.childLinked = true;
+  progress.childSyncCompletedAt = Date.now();
+  user.progress = progress;
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true, childSyncCompletedAt: progress.childSyncCompletedAt });
 });
 
 app.post("/api/focus-session/unlink", requireExtensionUser, (req, res) => {
