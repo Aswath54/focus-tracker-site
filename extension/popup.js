@@ -435,6 +435,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Whitelist Elements
   const newSiteInput = document.getElementById("new-site-input");
   const btnAddSite = document.getElementById("btn-add-site");
+  const whitelistAddSiteRow = document.querySelector("#sec-whitelist .add-site-row");
   const whitelistList = document.getElementById("whitelist-list");
   const whitelistActionError = document.getElementById("whitelist-action-error");
   const sessionActivityPie = document.getElementById("session-activity-pie");
@@ -558,6 +559,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       syncProgress();
       const isChildMode = focusMode === "child";
       const isParentMode = focusMode === "parent";
+      const childSyncReady = childSyncUnlocked && childLinked && childSyncCompletedAt > 0;
       const isAccountMode = isParentMode || isChildMode;
       const hasSignedInAccount = !!(accountToken && accountUser);
       const accountRequired = isAccountMode && !hasSignedInAccount;
@@ -588,7 +590,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         const sessionFeedbackPending = !!state.showFeedbackPrompt && !!state.feedbackPromptSessionId;
         secPermanentFeedback.style.display = accountRequired || isChildMode || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
       }
-      secWhitelist.style.display = isChildMode ? "none" : "block";
+      secWhitelist.style.display = isChildMode && !childSyncReady ? "none" : "block";
+      if (whitelistAddSiteRow) whitelistAddSiteRow.style.display = isChildMode ? "none" : "flex";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
         parentControlPanel.style.display = isParentMode && hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
@@ -655,7 +658,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secActiveSession) secActiveSession.style.display = "none";
             if (secIdleSession) secIdleSession.style.display = "none";
             if (secFeedback) secFeedback.style.display = "none";
-            if (secWhitelist) secWhitelist.style.display = "none";
+            if (secWhitelist) secWhitelist.style.display = "block";
             if (secChangePassword) secChangePassword.style.display = "none";
             if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
@@ -698,7 +701,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
               showSection(secIdleSession);
               updateStatus(false, "Idle");
-              secWhitelist.style.display = isChildMode ? "none" : "block"; // Restore whitelist
+              secWhitelist.style.display = isChildMode ? (childSyncReady ? "block" : "none") : "block";
               secChangePassword.style.display = "none";
             }
           });
@@ -1236,6 +1239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "delete-btn";
+      deleteBtn.style.display = focusMode === "child" ? "none" : "";
       deleteBtn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 6 5 6 21 6"></polyline>

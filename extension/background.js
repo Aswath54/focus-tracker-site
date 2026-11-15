@@ -995,8 +995,8 @@ async function handleMessages(request) {
     }
     
     else if (request.type === "UPDATE_WHITELIST") {
-      if (state.focusMode === "child" && state.isFocusActive && Date.now() < state.sessionEndTime) {
-        return { success: false, error: "Whitelist changes are disabled in child mode during an active session." };
+      if (state.focusMode === "child") {
+        return { success: false, error: "Only Parent mode can change whitelisted sites." };
       }
 
       // If focus is active, we require the password to modify the whitelist
