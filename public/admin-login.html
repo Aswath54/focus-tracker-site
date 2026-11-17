@@ -9,17 +9,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
-<body class="admin-shell">
-  <main class="admin-auth-card">
-    <div class="hero-badge">ADMIN ONLY</div>
+<body class="admin-shell admin-login-page">
+  <main class="admin-auth-card admin-login-card">
+    <div class="admin-login-mark" aria-hidden="true">AF</div>
+    <p class="admin-login-kicker">Secure admin access</p>
     <h1 class="admin-auth-title">AuraFocus Console</h1>
-    <p class="admin-auth-copy">Use the authorized Google account to access the private admin console.</p>
+    <p class="admin-auth-copy">Sign in with the authorized Google account to manage AuraFocus feedback.</p>
 
-    <p id="admin-login-error" class="admin-auth-error" aria-live="polite"></p>
-    <a href="/admin/login/google" class="btn btn-primary btn-large admin-auth-btn" style="justify-content: center; text-decoration: none;">
-      Continue with Google
+    <p id="admin-login-error" class="admin-auth-error admin-login-error" aria-live="polite"></p>
+    <a href="/admin/login/google" class="btn btn-primary btn-large admin-auth-btn admin-login-btn">
+      <svg class="admin-google-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.93c-.58 2.96-2.27 5.47-4.78 7.16l7.73 6C44.39 37.94 46.98 31.9 46.98 24.55Z"/>
+        <path fill="#FBBC05" d="M10.53 28.59a14.4 14.4 0 0 1 0-9.18l-7.98-6.2a23.9 23.9 0 0 0 0 21.58l7.98-6.2Z"/>
+        <path fill="#34A853" d="M24 48c6.47 0 11.9-2.13 15.87-5.82l-7.73-6c-2.14 1.44-4.87 2.3-8.14 2.3-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.2C6.51 42.62 14.62 48 24 48Z"/>
+      </svg>
+      <span>Continue with Google</span>
     </a>
-    <a class="auth-back-link" href="/">Back to AuraFocus</a>
+    <p class="admin-login-privacy">Only the account configured for admin access can continue.</p>
+    <a class="auth-back-link" href="/">
+      <span aria-hidden="true">←</span> Back to AuraFocus
+    </a>
   </main>
 
   <script>

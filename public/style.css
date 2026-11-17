@@ -674,6 +674,126 @@ ul { list-style: none; }
 .auth-back-link:hover {
   text-decoration: underline;
 }
+.admin-login-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 28px 18px;
+  overflow-x: hidden;
+}
+.admin-login-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255,176,0,0.11), transparent 38%),
+    radial-gradient(ellipse at 80% 82%, rgba(255,51,68,0.09), transparent 32%);
+}
+.admin-login-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 460px);
+  max-width: 460px;
+  margin: 0;
+  padding: 42px 38px 34px;
+  overflow: hidden;
+  border-color: rgba(255,255,255,0.12);
+  border-radius: 26px;
+  background: linear-gradient(155deg, rgba(20,24,37,0.97), rgba(10,13,23,0.96));
+  box-shadow: 0 32px 90px rgba(0,0,0,0.5), 0 0 48px rgba(255,176,0,0.07);
+  text-align: center;
+}
+.admin-login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,176,0,0.72), transparent);
+}
+.admin-login-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border: 1px solid rgba(255,176,0,0.65);
+  border-radius: 20px;
+  background: linear-gradient(140deg, rgba(255,176,0,0.2), rgba(255,51,68,0.14));
+  box-shadow: 0 0 30px rgba(255,176,0,0.12);
+  color: #fff;
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+.admin-login-kicker {
+  margin-bottom: 8px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.admin-login-title {
+  margin-bottom: 12px;
+  font-size: clamp(25px, 6vw, 31px);
+  line-height: 1.25;
+}
+.admin-login-copy {
+  max-width: 330px;
+  margin: 0 auto;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.admin-login-error:empty {
+  display: none;
+}
+.admin-login-error:not(:empty) {
+  margin-top: 18px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255,80,90,0.32);
+  border-radius: 11px;
+  background: rgba(255,51,68,0.1);
+  line-height: 1.5;
+}
+.admin-login-btn {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  margin: 26px 0 0;
+  padding: 14px 18px;
+  border-radius: 12px;
+  text-decoration: none;
+}
+.admin-google-icon {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+.admin-login-privacy {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.admin-login-card .auth-back-link {
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 25px auto 0;
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+.admin-login-card .auth-back-link:hover {
+  color: var(--gold);
+}
 .admin-header {
   display: flex;
   justify-content: space-between;

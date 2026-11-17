@@ -557,7 +557,7 @@ app.get("/admin/login/google", (req, res) => {
   if (!authJs.configured || !ADMIN_EMAIL) {
     return res.status(503).send("Google admin authentication is not configured.");
   }
-  return res.redirect("/api/auth/signin/google?callbackUrl=%2Fadmin%2Fauth%2Fcomplete&prompt=select_account");
+  return res.redirect("/api/auth/signin?callbackUrl=%2Fadmin%2Fauth%2Fcomplete");
 });
 
 app.get("/admin/auth/complete", async (req, res) => {
