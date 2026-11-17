@@ -59,8 +59,22 @@ app.all(/^\/api\/auth\/(?!config(?:\/|$)|google-login(?:\/|$)|profile(?:\/|$)).*
     }
     let body;
     if (req.method !== "GET" && req.method !== "HEAD") {
-      body = JSON.stringify(req.body || {});
-      if (!headers.has("content-type")) headers.set("content-type", "application/json");
+      const incomingContentType = String(req.get("content-type") || "").toLowerCase();
+      if (incomingContentType.includes("application/x-www-form-urlencoded")) {
+        const formBody = new URLSearchParams();
+        for (const [name, value] of Object.entries(req.body || {})) {
+          if (Array.isArray(value)) {
+            value.forEach((item) => formBody.append(name, String(item)));
+          } else if (value !== undefined && value !== null) {
+            formBody.append(name, String(value));
+          }
+        }
+        body = formBody.toString();
+        headers.set("content-type", "application/x-www-form-urlencoded");
+      } else {
+        body = JSON.stringify(req.body || {});
+        headers.set("content-type", "application/json");
+      }
     }
     const response = await authJs.handle(new Request(url, { method: req.method, headers, body }));
     res.status(response.status);

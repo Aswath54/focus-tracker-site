@@ -11,6 +11,7 @@ const configured = Boolean(authSecret && googleClientId && googleClientSecret);
 const config = {
   secret: authSecret,
   trustHost: true,
+  basePath: "/api/auth",
   providers: configured
     ? [Google({ clientId: googleClientId, clientSecret: googleClientSecret })]
     : [],
