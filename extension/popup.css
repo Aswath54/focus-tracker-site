@@ -1162,6 +1162,12 @@ input:focus {
   margin-bottom: 16px;
 }
 
+.perm-feedback-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
+}
+
 @media (max-width: 420px) {
   body {
     width: 100vw;

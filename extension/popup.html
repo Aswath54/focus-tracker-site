@@ -443,7 +443,7 @@
       <section id="sec-permanent-feedback" class="card permanent-feedback-card" style="display: none;">
         <div class="whitelist-header">
           <h3>Saved Feedback</h3>
-          <div class="whitelist-tooltip">Updates the same record every time</div>
+          <div class="whitelist-tooltip">Submit to save or replace your feedback</div>
         </div>
         <p class="permanent-feedback-note">Pick a star rating or thumbs vote. Each change replaces your previous value.</p>
 
@@ -468,7 +468,9 @@
           <textarea id="perm-feedback-comments" placeholder="Optional note for your saved feedback..."></textarea>
         </div>
 
-        <div id="perm-feedback-success" class="success-msg" style="display: none;">Saved feedback updated.</div>
+        <div id="perm-feedback-error" class="error-msg" style="display: none;"></div>
+        <div id="perm-feedback-success" class="success-msg" style="display: none;">Feedback saved.</div>
+        <button type="button" id="perm-feedback-submit" class="btn btn-primary btn-glow perm-feedback-submit">Submit Feedback</button>
       </section>
 
     </main>

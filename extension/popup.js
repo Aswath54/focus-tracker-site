@@ -480,7 +480,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const secFeedback = document.getElementById("sec-feedback");
   const btnThumbUp = document.getElementById("btn-thumb-up");
   const btnThumbDown = document.getElementById("btn-thumb-down");
-  const starBtns = document.querySelectorAll(".star-btn");
+  const starBtns = document.querySelectorAll("#sec-feedback .star-btn");
   const feedbackComments = document.getElementById("feedback-comments");
   const btnSubmitFeedback = document.getElementById("btn-submit-feedback");
   const btnLaterFeedback = document.getElementById("btn-later-feedback");
@@ -490,6 +490,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const permThumbDown = document.getElementById("perm-btn-thumb-down");
   const permStarBtns = document.querySelectorAll(".perm-star-btn");
   const permFeedbackComments = document.getElementById("perm-feedback-comments");
+  const permFeedbackSubmit = document.getElementById("perm-feedback-submit");
+  const permFeedbackError = document.getElementById("perm-feedback-error");
   const permFeedbackSuccess = document.getElementById("perm-feedback-success");
 
   // Local popup states
@@ -2755,14 +2757,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (permThumbUp) {
       permThumbUp.addEventListener("click", () => {
         permanentFeedback.thumb = permanentFeedback.thumb === "up" ? null : "up";
-        savePermanentFeedback();
+        renderPermanentFeedback();
       });
     }
 
     if (permThumbDown) {
       permThumbDown.addEventListener("click", () => {
         permanentFeedback.thumb = permanentFeedback.thumb === "down" ? null : "down";
-        savePermanentFeedback();
+        renderPermanentFeedback();
       });
     }
 
@@ -2770,19 +2772,24 @@ document.addEventListener("DOMContentLoaded", async () => {
       btn.addEventListener("click", () => {
         const rating = parseInt(btn.dataset.rating, 10);
         permanentFeedback.rating = permanentFeedback.rating === rating ? 0 : rating;
-        savePermanentFeedback();
+        renderPermanentFeedback();
       });
     });
 
     if (permFeedbackComments) {
       permFeedbackComments.addEventListener("input", () => {
         permanentFeedback.comments = permFeedbackComments.value;
-        savePermanentFeedback(true);
       });
+    }
+
+    if (permFeedbackSubmit) {
+      permFeedbackSubmit.addEventListener("click", savePermanentFeedback);
     }
   }
 
   function renderPermanentFeedback() {
+    if (permFeedbackSuccess) permFeedbackSuccess.style.display = "none";
+    if (permFeedbackError) permFeedbackError.style.display = "none";
     if (permFeedbackComments) {
       permFeedbackComments.value = permanentFeedback.comments || "";
     }
@@ -2798,14 +2805,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  async function savePermanentFeedback(skipServer = false) {
-    renderPermanentFeedback();
-    await chrome.storage.local.set({ permanentFeedback });
-    await syncProgress();
+  async function savePermanentFeedback() {
+    const comments = typeof permanentFeedback.comments === "string" ? permanentFeedback.comments.trim() : "";
+    if (!permanentFeedback.rating && !permanentFeedback.thumb && !comments) {
+      showError(permFeedbackError, "Choose a rating, a thumbs vote, or add a comment before submitting.");
+      return;
+    }
 
-    if (!skipServer && accountToken) {
+    if (permFeedbackError) permFeedbackError.style.display = "none";
+    if (permFeedbackSubmit) permFeedbackSubmit.disabled = true;
+    renderPermanentFeedback();
+    permanentFeedback.comments = comments;
+    await chrome.storage.local.set({ permanentFeedback });
+    if (accountToken) {
+      const progressResult = await syncProgress();
+      if (!progressResult.success) {
+        if (permFeedbackError) {
+          permFeedbackError.textContent = progressResult.error || "Could not sync feedback.";
+          permFeedbackError.style.display = "block";
+        }
+        if (permFeedbackSubmit) permFeedbackSubmit.disabled = false;
+        return;
+      }
+    }
+
+    if (accountToken) {
       try {
-        await fetch(backendPath("/api/feedback"), {
+        const response = await fetch(backendPath("/api/feedback"), {
           method: "POST",
           headers: getFeedbackHeaders(),
           body: JSON.stringify({
@@ -2815,6 +2841,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             feedbackKey: getFeedbackKey()
           })
         });
+        if (!response.ok) throw new Error("Could not submit feedback to the server.");
         if (permFeedbackSuccess) {
           permFeedbackSuccess.style.display = "block";
           setTimeout(() => {
@@ -2823,7 +2850,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       } catch (e) {
         console.error("Failed to save permanent feedback:", e);
+        if (permFeedbackError) {
+          permFeedbackError.textContent = e.message || "Could not submit feedback.";
+          permFeedbackError.style.display = "block";
+        }
+      } finally {
+        if (permFeedbackSubmit) permFeedbackSubmit.disabled = false;
       }
+    } else {
+      if (permFeedbackSuccess) {
+        permFeedbackSuccess.textContent = "Feedback saved on this device. Sign in to sync it across devices.";
+        permFeedbackSuccess.style.display = "block";
+        setTimeout(() => {
+          permFeedbackSuccess.style.display = "none";
+          permFeedbackSuccess.textContent = "Feedback saved.";
+        }, 2500);
+      }
+      if (permFeedbackSubmit) permFeedbackSubmit.disabled = false;
     }
   }
 });
