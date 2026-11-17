@@ -394,6 +394,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const secActiveSession = document.getElementById("sec-active-session");
   const secIdleSession = document.getElementById("sec-idle-session");
   const secPermanentFeedback = document.getElementById("sec-permanent-feedback");
+  const appFooter = document.querySelector(".app-footer");
+  if (secPermanentFeedback && appFooter) appFooter.after(secPermanentFeedback);
   const secWhitelist = document.getElementById("sec-whitelist");
   const parentTestView = document.getElementById("parent-test-view");
   
