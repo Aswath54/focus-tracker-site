@@ -345,6 +345,10 @@ input[type="number"] {
   padding-bottom: 14px;
 }
 
+#sec-permanent-feedback {
+  order: 6;
+}
+
 .permanent-feedback-note {
   font-size: 11px;
   color: var(--text-muted);
