@@ -1168,8 +1168,15 @@ input:focus {
 
 .perm-feedback-submit {
   width: 100%;
+  min-height: 42px;
   justify-content: center;
-  margin-top: 4px;
+  margin: 0;
+}
+
+.perm-feedback-submit-row {
+  display: flex;
+  width: 100%;
+  margin-top: 10px;
 }
 
 @media (max-width: 420px) {
