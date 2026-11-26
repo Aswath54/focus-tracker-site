@@ -302,7 +302,14 @@ async function redirectActiveBlockedTabs(allowedUrls) {
     if (tab.url) {
       try {
         const url = new URL(tab.url);
-        // Skip chrome://, about:, extension pages etc.
+        if (url.protocol === "chrome-extension:" && url.pathname.endsWith("/blocked.html")) {
+          const blockedDestination = url.searchParams.get("url");
+          if (blockedDestination && isAllowedFocusUrl(blockedDestination, allowedUrls)) {
+            await chrome.tabs.update(tab.id, { url: blockedDestination });
+          }
+          continue;
+        }
+        // Skip chrome://, about:, and other extension pages.
         if (url.protocol !== "http:" && url.protocol !== "https:") continue;
 
         if (!isAllowedFocusUrl(tab.url, allowedUrls)) {

@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const accessRequestStatus = document.getElementById("access-request-status");
   let blockedDomain = "";
   let timerInterval = null;
+  let approvalCheckInterval = null;
 
   try {
     const blockedUrl = new URL(originalUrl);
@@ -51,12 +52,43 @@ document.addEventListener("DOMContentLoaded", () => {
       if (state.focusMode === "child" && state.hasAccount && state.isFocusActive && blockedDomain && accessRequestSection) {
         accessRequestSection.hidden = false;
       }
+      if (state.focusMode === "child" && isDomainAllowed(blockedDomain, state.allowedUrls)) {
+        redirectToOriginal();
+        return;
+      }
       if (!state.isFocusActive || Date.now() >= state.sessionEndTime) {
         redirectToOriginal();
         return;
       }
 
       runTimer(state.sessionEndTime);
+      if (state.focusMode === "child" && !approvalCheckInterval) {
+        approvalCheckInterval = setInterval(checkForParentApproval, 5000);
+      }
+    });
+  }
+
+  function isDomainAllowed(domain, allowedUrls) {
+    return (Array.isArray(allowedUrls) ? allowedUrls : []).some((entry) => {
+      const allowedDomain = String(entry).toLowerCase()
+        .replace(/^(https?:\/\/)?(www\.)?/, "")
+        .split(/[/:?#]/)[0];
+      return allowedDomain && (domain === allowedDomain || domain.endsWith(`.${allowedDomain}`));
+    });
+  }
+
+  function checkForParentApproval() {
+    chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
+      if (chrome.runtime.lastError || !response?.success) return;
+      const state = response.state;
+      if (
+        state.focusMode === "child" &&
+        state.isFocusActive &&
+        Date.now() < state.sessionEndTime &&
+        isDomainAllowed(blockedDomain, state.allowedUrls)
+      ) {
+        redirectToOriginal();
+      }
     });
   }
 
@@ -101,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function redirectToOriginal() {
     if (timerInterval) clearInterval(timerInterval);
+    if (approvalCheckInterval) clearInterval(approvalCheckInterval);
     window.location.href = originalUrl;
   }
 

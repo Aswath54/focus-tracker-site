@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AuraFocus Tracker",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzkDz7wEgKrt9G1j9nxFb9oiDEV+EQaE0mb5wRw4680L8KE321RjV8Usbyzws6/vSwDhA1cT8K3Dskf8QyHK4VK8bfH4BPVF9FUSFJ346cjEjG4sXTIxFOIYbigbu5uAhcPzXVcQGn3Q6WNOn/cZdfOgkgu05x5ghahQnkT+hZAiJvBj96JDGHo72pUJNBD//5Kx2CUwuP6wdXSxsy22JYiGHqWj5eHYzk+AOtpHlNtwT2XU5n3s1xU6maZIUk2nLyA6gY3sNBXzWqeG12cVIl0S9/AW0B7k+OSVO+bdxn3g61C8KsKb914P5g77F+w/4UViNXZbxiort9HCKUImGJQIDAQAB",
   "description": "A premium, password-protected focus sessions tracker and website blocker.",
   "permissions": [
