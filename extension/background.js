@@ -602,6 +602,53 @@ async function ensureRemoteFocusSessionAlarm() {
   }
 }
 
+async function checkForParentAccessRequests() {
+  try {
+    const local = await chrome.storage.local.get(["accountToken", "focusMode", "notifiedAccessRequestIds"]);
+    if (!local.accountToken || local.focusMode !== "parent") return;
+
+    const result = await requestRemoteFocusSession("/api/auth/profile");
+    if (!result.ok) return;
+    const requests = Array.isArray(result.data?.progress?.accessRequests)
+      ? result.data.progress.accessRequests
+      : [];
+    const pending = requests.filter((item) => item && item.status === "pending" && item.id && item.domain);
+    const notifiedIds = new Set(Array.isArray(local.notifiedAccessRequestIds) ? local.notifiedAccessRequestIds : []);
+    const newRequests = pending.filter((item) => !notifiedIds.has(item.id));
+    if (!newRequests.length) return;
+
+    for (const item of newRequests) {
+      const notificationId = `access-request-${item.id}`;
+      chrome.notifications.create(notificationId, {
+        type: "basic",
+        iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWj9awAAAABJRU5ErkJggg==",
+        title: "Website access request",
+        message: `Your child requested access to ${item.domain}.`,
+        contextMessage: "Open AuraFocus Parent mode to review the request.",
+        priority: 2
+      });
+      notifiedIds.add(item.id);
+    }
+
+    await chrome.storage.local.set({ notifiedAccessRequestIds: [...notifiedIds].slice(-100) });
+  } catch (error) {
+    console.warn("Could not check for child access requests:", error.message);
+  }
+}
+
+chrome.notifications.onClicked.addListener((notificationId) => {
+  if (notificationId.startsWith("access-request-")) {
+    chrome.windows.create({
+      url: chrome.runtime.getURL("popup.html"),
+      type: "popup",
+      width: 380,
+      height: 620,
+      focused: true
+    });
+    chrome.notifications.clear(notificationId);
+  }
+});
+
 // Clean up and end focus session
 async function endFocusSession(notified = true, showFeedbackPrompt = true) {
   await publishRemoteFocusActivity();
@@ -676,6 +723,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await endFocusSession(true);
   } else if (alarm.name === REMOTE_FOCUS_SESSION_ALARM) {
     await syncRemoteFocusSession();
+    await checkForParentAccessRequests();
   }
 });
 
@@ -684,6 +732,7 @@ async function initializeExtension() {
   await ensureRemoteFocusSessionAlarm();
   await refreshBlockingRules();
   await syncRemoteFocusSession();
+  await checkForParentAccessRequests();
   await refreshActiveSiteTracking();
 }
 
