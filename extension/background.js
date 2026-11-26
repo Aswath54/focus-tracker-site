@@ -461,6 +461,7 @@ async function applyLocalFocusSession(session, remote = false) {
   await chrome.storage.local.set({
     isFocusActive: true,
     sessionEndTime: endTime,
+    activeSessionStartedAt: Number(session.startedAt) || Date.now(),
     allowedUrls,
     activeSessionId: sessionId,
     sessionSiteActivity: {},
@@ -673,15 +674,39 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 // Clean up and end focus session
 async function endFocusSession(notified = true, showFeedbackPrompt = true) {
+  const endingSession = await chrome.storage.local.get([
+    "activeSessionId",
+    "activeSessionStartedAt",
+    "sessionEndTime",
+    "focusMode"
+  ]);
   await publishRemoteFocusActivity();
-  await finishSiteActivityTracking();
-  const sessionResult = await chrome.storage.local.get("activeSessionId");
-  const { focusMode } = await chrome.storage.local.get("focusMode");
-  const feedbackPromptSessionId = sessionResult.activeSessionId || `session_${Date.now()}`;
+  const activity = await finishSiteActivityTracking();
+  const focusMode = endingSession.focusMode;
+  const endedAt = Math.min(Date.now(), Number(endingSession.sessionEndTime) || Date.now());
+  const startedAt = Number(endingSession.activeSessionStartedAt) || endedAt;
+  const feedbackPromptSessionId = endingSession.activeSessionId || `session_${Date.now()}`;
+
+  if (focusMode === "self" && endingSession.activeSessionId) {
+    const stored = await chrome.storage.local.get("sessionHistory");
+    const history = Array.isArray(stored.sessionHistory) ? stored.sessionHistory : [];
+    if (!history.some((item) => item.sessionId === endingSession.activeSessionId)) {
+      history.push({
+        sessionId: endingSession.activeSessionId,
+        startedAt,
+        endedAt,
+        durationMs: Math.max(0, endedAt - startedAt),
+        mode: "self",
+        activity
+      });
+      await chrome.storage.local.set({ sessionHistory: history.slice(-50) });
+    }
+  }
 
   await chrome.storage.local.set({ 
     isFocusActive: false, 
     sessionEndTime: 0,
+    activeSessionStartedAt: 0,
     allowedUrls: [],
     activeSessionId: null,
     remoteSessionId: null,
@@ -1068,7 +1093,7 @@ async function handleMessages(request) {
       const endTime = Date.now() + durationSec * 1000;
       const allowedUrls = request.allowedUrls || [];
       const activeSessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      await applyLocalFocusSession({ sessionId: activeSessionId, endTime, allowedUrls });
+      await applyLocalFocusSession({ sessionId: activeSessionId, startedAt: Date.now(), endTime, allowedUrls });
 
       return { success: true, sessionEndTime: endTime };
     }
@@ -1175,7 +1200,8 @@ async function handleMessages(request) {
         "childLinked",
         "childSyncUnlocked",
         "childSyncCompletedAt",
-        "permanentFeedback"
+        "permanentFeedback",
+        "sessionHistory"
       ]);
       const remoteAllowedUrls = Array.isArray(progress.allowedUrls) ? progress.allowedUrls : [];
       const remoteWhitelistHistory = Array.isArray(progress.whitelistHistory) ? progress.whitelistHistory : [];
@@ -1212,7 +1238,10 @@ async function handleMessages(request) {
         focusMode: ["self", "parent", "child"].includes(existing.focusMode)
           ? existing.focusMode
           : "self",
-        permanentFeedback: remotePermanentFeedback || existing.permanentFeedback || { rating: 0, thumb: null, comments: "" }
+        permanentFeedback: remotePermanentFeedback || existing.permanentFeedback || { rating: 0, thumb: null, comments: "" },
+        sessionHistory: Array.isArray(progress.sessionHistory) && progress.sessionHistory.length
+          ? progress.sessionHistory
+          : (existing.sessionHistory || [])
       });
       return { success: true };
     }

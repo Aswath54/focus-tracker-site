@@ -465,6 +465,19 @@ function sanitizeProgress(progress) {
             decidedAt: Number(item.decidedAt) || 0,
           }))
       : [],
+    sessionHistory: Array.isArray(source.sessionHistory)
+      ? source.sessionHistory
+          .filter((item) => item && typeof item.sessionId === "string")
+          .slice(-50)
+          .map((item) => ({
+            sessionId: item.sessionId.slice(0, 128),
+            startedAt: Number(item.startedAt) || 0,
+            endedAt: Number(item.endedAt) || 0,
+            durationMs: Math.max(0, Number(item.durationMs) || 0),
+            mode: ["self", "parent", "child"].includes(item.mode) ? item.mode : "child",
+            activity: sanitizeSessionActivity(item.activity),
+          }))
+      : [],
     updatedAt: Date.now(),
   };
 }
@@ -486,6 +499,32 @@ function sanitizeFocusSession(session) {
       : [],
     activity: sanitizeSessionActivity(source.activity),
   };
+}
+
+function archiveActiveFocusSession(user, endedAt = Date.now()) {
+  const active = user && user.activeFocusSession;
+  if (!active || typeof active.sessionId !== "string" || !active.sessionId) return false;
+
+  const scheduledEndAt = Number(active.endTime) || endedAt;
+  const startedAt = Number(active.startedAt) || Math.min(endedAt, scheduledEndAt);
+  const actualEndedAt = Math.max(startedAt, Math.min(endedAt, scheduledEndAt));
+  user.progress = sanitizeProgress(user.progress || {});
+  const sessions = user.progress.sessionHistory;
+  if (!sessions.some((item) => item.sessionId === active.sessionId)) {
+    sessions.push({
+      sessionId: active.sessionId,
+      startedAt,
+      endedAt: actualEndedAt,
+      durationMs: Math.max(0, actualEndedAt - startedAt),
+      mode: "child",
+      activity: sanitizeSessionActivity(active.activity),
+    });
+    user.progress.sessionHistory = sessions.slice(-50);
+  }
+  user.lastFocusActivity = sanitizeSessionActivity(active.activity);
+  delete user.activeFocusSession;
+  user.updatedAt = Date.now();
+  return true;
 }
 
 function sanitizeSessionActivity(activity) {
@@ -819,6 +858,7 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
 
   const incomingProgress = req.body && req.body.progress;
   const existingAccessRequests = Array.isArray(user.progress?.accessRequests) ? user.progress.accessRequests : [];
+  const existingSessions = Array.isArray(user.progress?.sessionHistory) ? user.progress.sessionHistory : [];
   user.progress = sanitizeProgress(incomingProgress);
   // The dedicated request and decision routes are authoritative. Keep their
   // records when another device uploads an older or stale progress snapshot.
@@ -827,6 +867,13 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
     if (!mergedRequests.has(item.id)) mergedRequests.set(item.id, item);
   }
   user.progress.accessRequests = [...mergedRequests.values()].slice(-50);
+  const mergedSessions = new Map(existingSessions.map((item) => [item.sessionId, item]));
+  for (const item of user.progress.sessionHistory) {
+    if (!mergedSessions.has(item.sessionId)) mergedSessions.set(item.sessionId, item);
+  }
+  user.progress.sessionHistory = [...mergedSessions.values()]
+    .sort((a, b) => Number(a.startedAt) - Number(b.startedAt))
+    .slice(-50);
   const activeSession = sanitizeFocusSession(user.activeFocusSession);
   if (activeSession) {
     // An active child session proves the parent-child link was valid when it
@@ -915,9 +962,7 @@ app.get("/api/focus-session", requireExtensionUser, (req, res) => {
 
   const session = sanitizeFocusSession(user.activeFocusSession);
   if (!session && user.activeFocusSession) {
-    user.lastFocusActivity = sanitizeSessionActivity(user.activeFocusSession.activity);
-    delete user.activeFocusSession;
-    user.updatedAt = Date.now();
+    archiveActiveFocusSession(user, Number(user.activeFocusSession.endTime) || Date.now());
     writeDB(db);
   } else if (session) {
     user.progress = sanitizeProgress(user.progress || {});
@@ -1012,9 +1057,12 @@ app.post("/api/focus-session/stop", requireExtensionUser, (req, res) => {
   }
 
   const session = sanitizeFocusSession(user.activeFocusSession);
-  user.lastFocusActivity = session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity);
-  delete user.activeFocusSession;
-  user.updatedAt = Date.now();
+  if (user.activeFocusSession) {
+    archiveActiveFocusSession(user, Date.now());
+  } else {
+    user.lastFocusActivity = session ? session.activity : sanitizeSessionActivity(user.lastFocusActivity);
+    user.updatedAt = Date.now();
+  }
   writeDB(db);
   return res.json({ success: true });
 });

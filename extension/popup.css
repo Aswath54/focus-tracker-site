@@ -1080,6 +1080,40 @@ input:focus {
   font-weight: 700;
 }
 
+.previous-sessions-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#previous-sessions-panel {
+  order: 6;
+}
+
+.previous-session-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.previous-session-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-normal);
+}
+
+.previous-session-duration {
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .blocked-site-activity-domain {
   min-width: 0;
   overflow: hidden;
