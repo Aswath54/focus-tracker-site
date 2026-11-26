@@ -20,10 +20,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const countdownTimer = document.getElementById("countdown-timer");
   const quoteText = document.getElementById("quote-text");
   const quoteAuthor = document.getElementById("quote-author");
+  const accessRequestSection = document.getElementById("access-request-section");
+  const requestAccessButton = document.getElementById("request-access-button");
+  const accessRequestStatus = document.getElementById("access-request-status");
+  let blockedDomain = "";
   let timerInterval = null;
 
   try {
-    blockedUrlDisplay.textContent = new URL(originalUrl).hostname;
+    const blockedUrl = new URL(originalUrl);
+    blockedDomain = blockedUrl.hostname.toLowerCase().replace(/^www\./, "");
+    blockedUrlDisplay.textContent = blockedUrl.hostname;
   } catch (error) {
     blockedUrlDisplay.textContent = originalUrl;
   }
@@ -42,12 +48,33 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const state = response.state;
+      if (state.focusMode === "child" && state.hasAccount && state.isFocusActive && blockedDomain && accessRequestSection) {
+        accessRequestSection.hidden = false;
+      }
       if (!state.isFocusActive || Date.now() >= state.sessionEndTime) {
         redirectToOriginal();
         return;
       }
 
       runTimer(state.sessionEndTime);
+    });
+  }
+
+  if (requestAccessButton) {
+    requestAccessButton.addEventListener("click", () => {
+      requestAccessButton.disabled = true;
+      accessRequestStatus.textContent = "Sending request...";
+      chrome.runtime.sendMessage({ type: "REQUEST_SITE_ACCESS", domain: blockedDomain }, (response) => {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          accessRequestStatus.textContent = response?.error || "Could not send the request. Check that the child device is online.";
+          requestAccessButton.disabled = false;
+          return;
+        }
+        accessRequestStatus.textContent = response.alreadyRequested
+          ? "Your request is already waiting for your parent."
+          : "Request sent. Your parent can review it in Parent mode.";
+        requestAccessButton.textContent = "Request sent";
+      });
     });
   }
 

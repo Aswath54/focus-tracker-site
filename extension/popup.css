@@ -295,6 +295,10 @@ input[type="number"] {
   order: 2;
 }
 
+#sec-permanent-feedback {
+  order: 0;
+}
+
 #sec-whitelist {
   order: 4;
 }
@@ -343,10 +347,6 @@ input[type="number"] {
 
 .permanent-feedback-card {
   padding-bottom: 14px;
-}
-
-#sec-permanent-feedback {
-  order: 6;
 }
 
 .permanent-feedback-note {
@@ -1049,6 +1049,35 @@ input:focus {
 
 .blocked-site-activity-item:last-child {
   border-bottom: none;
+}
+
+.parent-access-requests {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.parent-access-request-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.parent-access-request-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.parent-access-request-item > span {
+  flex: 1 1 100%;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .blocked-site-activity-domain {

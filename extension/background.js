@@ -753,6 +753,42 @@ async function handleMessages(request) {
       return { success: true, state: await getExtensionState() };
     }
 
+    if (request.type === "REQUEST_SITE_ACCESS") {
+      const account = await chrome.storage.local.get(["accountToken", "focusMode", "isFocusActive"]);
+      if (!account.accountToken || account.focusMode !== "child" || !account.isFocusActive) {
+        return { success: false, error: "Access requests are available during a linked child session." };
+      }
+      const domain = typeof request.domain === "string" ? request.domain.toLowerCase().replace(/^www\./, "") : "";
+      const result = await requestRemoteFocusSession("/api/access-requests", {
+        method: "POST",
+        body: { domain }
+      });
+      if (!result.ok) {
+        return { success: false, error: result.data?.error || result.error || "Could not send the access request." };
+      }
+      return { success: true, alreadyRequested: !!result.data?.alreadyRequested };
+    }
+
+    if (request.type === "DECIDE_SITE_ACCESS_REQUEST") {
+      const account = await chrome.storage.local.get("focusMode");
+      if (account.focusMode !== "parent") return { success: false, error: "Only Parent mode can decide access requests." };
+      const result = await requestRemoteFocusSession(`/api/access-requests/${encodeURIComponent(request.requestId)}/decision`, {
+        method: "POST",
+        body: { focusMode: "parent", status: request.status }
+      });
+      if (!result.ok) return { success: false, error: result.data?.error || result.error || "Could not update the request." };
+      if (request.status === "approved" && result.data?.session) {
+        const session = await chrome.storage.local.get(["remoteSessionId", "sessionEndTime"]);
+        if (session.remoteSessionId === result.data.session.sessionId) {
+          const allowedUrls = result.data.session.allowedUrls || [];
+          await chrome.storage.local.set({ allowedUrls });
+          await updateBlockingRules(allowedUrls);
+          await redirectActiveBlockedTabs(allowedUrls);
+        }
+      }
+      return { success: true };
+    }
+
     if (request.type === "GET_SESSION_ACTIVITY") {
       const localMode = await chrome.storage.local.get(["focusMode", "accountToken"]);
       if (localMode.focusMode === "parent" && localMode.accountToken) {

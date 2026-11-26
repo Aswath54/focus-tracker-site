@@ -453,6 +453,18 @@ function sanitizeProgress(progress) {
             comments: typeof source.permanentFeedback.comments === "string" ? source.permanentFeedback.comments : "",
           }
         : { rating: 0, thumb: null, comments: "" },
+    accessRequests: Array.isArray(source.accessRequests)
+      ? source.accessRequests
+          .filter((item) => item && typeof item.id === "string" && typeof item.domain === "string")
+          .slice(-50)
+          .map((item) => ({
+            id: item.id.slice(0, 100),
+            domain: item.domain.toLowerCase().replace(/^www\./, "").slice(0, 253),
+            status: ["pending", "approved", "denied"].includes(item.status) ? item.status : "pending",
+            requestedAt: Number(item.requestedAt) || Date.now(),
+            decidedAt: Number(item.decidedAt) || 0,
+          }))
+      : [],
     updatedAt: Date.now(),
   };
 }
@@ -806,7 +818,15 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   }
 
   const incomingProgress = req.body && req.body.progress;
+  const existingAccessRequests = Array.isArray(user.progress?.accessRequests) ? user.progress.accessRequests : [];
   user.progress = sanitizeProgress(incomingProgress);
+  // The dedicated request and decision routes are authoritative. Keep their
+  // records when another device uploads an older or stale progress snapshot.
+  const mergedRequests = new Map(existingAccessRequests.map((item) => [item.id, item]));
+  for (const item of user.progress.accessRequests) {
+    if (!mergedRequests.has(item.id)) mergedRequests.set(item.id, item);
+  }
+  user.progress.accessRequests = [...mergedRequests.values()].slice(-50);
   const activeSession = sanitizeFocusSession(user.activeFocusSession);
   if (activeSession) {
     // An active child session proves the parent-child link was valid when it
@@ -819,6 +839,70 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
+});
+
+app.post("/api/access-requests", requireExtensionUser, (req, res) => {
+  const domainInput = typeof req.body?.domain === "string" ? req.body.domain.trim().toLowerCase() : "";
+  const domain = domainInput.replace(/^https?:\/\//, "").replace(/^www\./, "").split(/[/?#]/)[0];
+  if (!domain || domain.length > 253 || !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
+    return res.status(400).json({ error: "Enter a valid website domain." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) return res.status(401).json({ error: "Please log in again." });
+
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (!session || !user.progress?.childLinked) {
+    return res.status(409).json({ error: "There is no active linked child session." });
+  }
+
+  user.progress = sanitizeProgress(user.progress);
+  const duplicate = user.progress.accessRequests.find((item) => item.domain === domain && item.status === "pending");
+  if (duplicate) return res.json({ success: true, alreadyRequested: true, request: duplicate });
+
+  const request = {
+    id: `access_${Date.now().toString(36)}_${crypto.randomBytes(6).toString("hex")}`,
+    domain,
+    status: "pending",
+    requestedAt: Date.now(),
+    decidedAt: 0,
+  };
+  user.progress.accessRequests.push(request);
+  user.progress.accessRequests = user.progress.accessRequests.slice(-50);
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true, request });
+});
+
+app.post("/api/access-requests/:requestId/decision", requireExtensionUser, (req, res) => {
+  if (req.body?.focusMode !== "parent" || !["approved", "denied"].includes(req.body?.status)) {
+    return res.status(403).json({ error: "Only Parent mode can decide access requests." });
+  }
+
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) return res.status(401).json({ error: "Please log in again." });
+
+  user.progress = sanitizeProgress(user.progress);
+  const request = user.progress.accessRequests.find((item) => item.id === req.params.requestId);
+  if (!request) return res.status(404).json({ error: "Access request not found." });
+  const session = sanitizeFocusSession(user.activeFocusSession);
+  if (req.body.status === "approved" && !session) {
+    return res.status(409).json({ error: "There is no active child session to allow this site for." });
+  }
+  request.status = req.body.status;
+  request.decidedAt = Date.now();
+
+  if (request.status === "approved" && session) {
+    session.allowedUrls = [...new Set([...session.allowedUrls, request.domain])].slice(0, 200);
+    user.activeFocusSession = session;
+  }
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true, request, session: session ? { sessionId: session.sessionId, allowedUrls: session.allowedUrls } : null });
 });
 
 app.get("/api/focus-session", requireExtensionUser, (req, res) => {

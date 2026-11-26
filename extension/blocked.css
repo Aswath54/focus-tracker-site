@@ -163,6 +163,43 @@ body {
   margin: 0 auto;
 }
 
+.access-request-section {
+  position: relative;
+  z-index: 2;
+  margin: 22px 0;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.access-request-section p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.request-access-button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gradient-gold-red);
+  color: var(--text-white);
+  font: 800 13px var(--font-heading);
+  cursor: pointer;
+}
+
+.request-access-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.access-request-status:not(:empty) {
+  margin-top: 10px;
+}
+
 .highlight-domain {
   color: var(--text-white);
   font-weight: 700;

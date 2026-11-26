@@ -448,6 +448,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const blockedSiteActivityList = document.getElementById("blocked-site-activity-list");
   const blockedSiteActivityDownload = document.getElementById("blocked-site-activity-download");
   const parentSessionActivityPanel = document.getElementById("parent-session-activity-panel");
+  const parentAccessRequestList = document.getElementById("parent-access-request-list");
   const parentSessionActivityPie = document.getElementById("parent-session-activity-pie");
   const parentSessionActivityLegend = document.getElementById("parent-session-activity-legend");
   const parentSessionActivityLabel = document.getElementById("parent-session-activity-label");
@@ -528,7 +529,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadPermanentFeedback();
   await refreshState();
   refreshSessionActivity();
-  const sessionActivityInterval = setInterval(refreshSessionActivity, 5000);
+  const sessionActivityInterval = setInterval(() => {
+    refreshSessionActivity();
+    refreshParentAccessRequests();
+  }, 5000);
   feedbackUserId = await getOrCreateFeedbackUserId();
   bindPermanentFeedbackControls();
 
@@ -580,6 +584,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (parentSessionActivityPanel) {
         parentSessionActivityPanel.style.display = isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword ? "block" : "none";
       }
+      if (isParentMode && hasSignedInAccount && childLinked && childSyncCompletedAt && hasParentPassword) {
+        refreshParentAccessRequests();
+      }
       if (focusModeSelect) {
         focusModeSelect.value = focusMode;
         focusModeSelect.disabled = modeLocked;
@@ -589,8 +596,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        const sessionFeedbackPending = !!state.showFeedbackPrompt && !!state.feedbackPromptSessionId;
-        secPermanentFeedback.style.display = accountRequired || isChildMode || state.isFocusActive || sessionFeedbackPending ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || isChildMode ? "none" : "block";
       }
       secWhitelist.style.display = isChildMode && !childSyncReady ? "none" : "block";
       if (whitelistAddSiteRow) whitelistAddSiteRow.style.display = isChildMode ? "none" : "flex";
@@ -1764,6 +1770,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  async function refreshParentAccessRequests() {
+    if (!parentAccessRequestList || focusMode !== "parent" || !accountToken || accessRequestRefreshBusy) return;
+    accessRequestRefreshBusy = true;
+    try {
+      const response = await fetch(backendPath("/api/auth/profile"), {
+        headers: { Authorization: `Bearer ${accountToken}` }
+      });
+      if (!response.ok) return;
+      const profile = await response.json();
+      const requests = Array.isArray(profile.progress?.accessRequests) ? profile.progress.accessRequests : [];
+      parentAccessRequestList.innerHTML = "";
+      const pending = requests.filter((item) => item.status === "pending");
+      if (!pending.length) {
+        const empty = document.createElement("li");
+        empty.className = "session-activity-empty";
+        empty.textContent = "No pending access requests.";
+        parentAccessRequestList.appendChild(empty);
+        return;
+      }
+      pending.forEach((item) => {
+        const row = document.createElement("li");
+        row.className = "parent-access-request-item";
+        const domain = document.createElement("span");
+        domain.textContent = item.domain;
+        const approve = document.createElement("button");
+        approve.type = "button";
+        approve.className = "btn btn-primary btn-small";
+        approve.textContent = "Allow this session";
+        approve.addEventListener("click", () => decideParentAccessRequest(item.id, "approved", approve));
+        const deny = document.createElement("button");
+        deny.type = "button";
+        deny.className = "btn btn-secondary btn-small";
+        deny.textContent = "Deny";
+        deny.addEventListener("click", () => decideParentAccessRequest(item.id, "denied", deny));
+        row.append(domain, approve, deny);
+        parentAccessRequestList.appendChild(row);
+      });
+    } catch (error) {
+      console.warn("Could not load child access requests:", error);
+    } finally {
+      accessRequestRefreshBusy = false;
+    }
+  }
+
+  function decideParentAccessRequest(requestId, status, button) {
+    button.disabled = true;
+    chrome.runtime.sendMessage({ type: "DECIDE_SITE_ACCESS_REQUEST", requestId, status }, (response) => {
+      if (!response || !response.success) {
+        button.disabled = false;
+        button.textContent = response?.error || "Try again";
+        return;
+      }
+      refreshParentAccessRequests();
+      refreshState();
+    });
+  }
+
+  let accessRequestRefreshBusy = false;
+
   function pdfEscape(value) {
     return String(value || "")
       .replace(/[^\x20-\x7E]/g, "?")
@@ -2615,7 +2680,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       "childSyncCompletedAt",
       "focusMode",
       "modeLocked",
-      "permanentFeedback"
+      "permanentFeedback",
+      "accessRequests"
     ]);
     return {
       allowedUrls: result.allowedUrls || [],
@@ -2629,7 +2695,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       childSyncCompletedAt: Number(result.childSyncCompletedAt) || 0,
       focusMode: result.focusMode || "self",
       modeLocked: !!result.modeLocked,
-      permanentFeedback: result.permanentFeedback || permanentFeedback
+      permanentFeedback: result.permanentFeedback || permanentFeedback,
+      accessRequests: result.accessRequests || []
     };
   }
 
