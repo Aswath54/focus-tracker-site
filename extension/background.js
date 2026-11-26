@@ -435,13 +435,19 @@ async function applyLocalFocusSession(session, remote = false) {
   const allowedUrls = Array.isArray(session.allowedUrls)
     ? session.allowedUrls.filter((item) => typeof item === "string")
     : [];
-  const current = await chrome.storage.local.get(["isFocusActive", "sessionEndTime", "remoteSessionId"]);
+  const current = await chrome.storage.local.get(["isFocusActive", "sessionEndTime", "remoteSessionId", "allowedUrls"]);
   if (
     remote &&
     current.isFocusActive &&
     current.remoteSessionId === sessionId &&
     Number(current.sessionEndTime) === endTime
   ) {
+    const currentAllowedUrls = Array.isArray(current.allowedUrls) ? current.allowedUrls : [];
+    if (JSON.stringify(currentAllowedUrls) !== JSON.stringify(allowedUrls)) {
+      await chrome.storage.local.set({ allowedUrls });
+      await updateBlockingRules(allowedUrls);
+      await redirectActiveBlockedTabs(allowedUrls);
+    }
     return true;
   }
 
