@@ -61,6 +61,67 @@ function addElapsedSiteActivity(activity, domain, startedAt, now) {
   }
 }
 
+function addElapsedBrowsingActivity(activity, domain, startedAt, now) {
+  let cursor = Number(startedAt);
+  const end = Number(now);
+  if (!domain || !Number.isFinite(cursor) || cursor <= 0 || !Number.isFinite(end) || end <= cursor) return;
+
+  while (cursor < end) {
+    const date = new Date(cursor).toISOString().slice(0, 10);
+    const nextDay = Date.parse(`${date}T00:00:00.000Z`) + 24 * 60 * 60 * 1000;
+    const segmentEnd = Math.min(end, nextDay);
+    if (!activity[date]) activity[date] = {};
+    activity[date][domain] = (Number(activity[date][domain]) || 0) + (segmentEnd - cursor);
+    cursor = segmentEnd;
+  }
+}
+
+function trimBrowsingActivity(activity, now = Date.now()) {
+  const cutoff = new Date(now - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  Object.keys(activity).forEach((date) => {
+    if (date < cutoff) delete activity[date];
+    const sites = activity[date];
+    if (!sites || typeof sites !== "object") {
+      delete activity[date];
+      return;
+    }
+    const ranked = Object.entries(sites)
+      .filter(([domain, milliseconds]) => domain && Number.isFinite(Number(milliseconds)) && Number(milliseconds) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 80);
+    activity[date] = Object.fromEntries(ranked);
+  });
+  return activity;
+}
+
+async function refreshBrowsingActivityTracking() {
+  return withSiteActivityLock(async () => {
+    const state = await chrome.storage.local.get([
+      "browsingActivity",
+      "browsingActivityDomain",
+      "browsingActivityStartedAt",
+      "browsingWindowFocused"
+    ]);
+    const activity = state.browsingActivity && typeof state.browsingActivity === "object"
+      ? state.browsingActivity
+      : {};
+    const now = Date.now();
+    const previousDomain = typeof state.browsingActivityDomain === "string" ? state.browsingActivityDomain : "";
+    addElapsedBrowsingActivity(activity, previousDomain, state.browsingActivityStartedAt, now);
+
+    const activeTab = state.browsingWindowFocused === false ? null : await getActiveWebTab();
+    let nextDomain = getTrackableDomain(activeTab);
+    if (nextDomain.startsWith("blocked:")) nextDomain = nextDomain.slice(8);
+    trimBrowsingActivity(activity, now);
+    await chrome.storage.local.set({
+      browsingActivity: activity,
+      browsingActivityDomain: nextDomain,
+      browsingActivityStartedAt: nextDomain ? now : 0
+    });
+    return activity;
+  });
+}
+
 async function getActiveWebTab() {
   const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   return tabs.find((tab) => getTrackableDomain(tab)) || null;
@@ -543,6 +604,20 @@ async function publishRemoteFocusActivity() {
   }
 }
 
+async function publishRemoteBrowsingActivity() {
+  const local = await chrome.storage.local.get(["accountToken", "focusMode", "childLinked", "browsingActivity"]);
+  if (!local.accountToken || local.focusMode !== "child" || !local.childLinked) return { skipped: true };
+  const recentCutoff = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const recentActivity = Object.fromEntries(
+    Object.entries(local.browsingActivity || {}).filter(([date]) => date >= recentCutoff)
+  );
+  const result = await requestRemoteFocusSession("/api/browsing-activity", {
+    method: "POST",
+    body: { focusMode: "child", activity: recentActivity }
+  });
+  return result.ok ? { success: true } : { success: false, error: result.data?.error || result.error };
+}
+
 async function syncRemoteFocusSession() {
   const local = await chrome.storage.local.get([
     "accountToken",
@@ -769,6 +844,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === "focusTimer") {
     await endFocusSession(true);
   } else if (alarm.name === REMOTE_FOCUS_SESSION_ALARM) {
+    await refreshBrowsingActivityTracking();
+    await publishRemoteBrowsingActivity();
     await syncRemoteFocusSession();
     await checkForParentAccessRequests();
   }
@@ -777,9 +854,17 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // Extension Startup listeners
 async function initializeExtension() {
   await ensureRemoteFocusSessionAlarm();
+  try {
+    const lastFocusedWindow = await chrome.windows.getLastFocused({ populate: false });
+    await chrome.storage.local.set({ browsingWindowFocused: !!lastFocusedWindow.focused });
+  } catch (error) {
+    await chrome.storage.local.set({ browsingWindowFocused: true });
+  }
   await refreshBlockingRules();
   await syncRemoteFocusSession();
   await checkForParentAccessRequests();
+  await refreshBrowsingActivityTracking();
+  await publishRemoteBrowsingActivity();
   await refreshActiveSiteTracking();
 }
 
@@ -788,6 +873,9 @@ chrome.runtime.onInstalled.addListener(initializeExtension);
 ensureRemoteFocusSessionAlarm();
 
 chrome.tabs.onActivated.addListener(() => {
+  refreshBrowsingActivityTracking().catch((error) => {
+    console.warn("Could not update browsing activity after tab activation:", error.message);
+  });
   refreshActiveSiteTracking().catch((error) => {
     console.warn("Could not update site activity after tab activation:", error.message);
   });
@@ -805,6 +893,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url) {
     enforceActiveTabBlocking(tabId, changeInfo.url);
     if (tab.active) {
+      refreshBrowsingActivityTracking().catch((error) => {
+        console.warn("Could not update browsing activity after navigation:", error.message);
+      });
       refreshActiveSiteTracking().catch((error) => {
         console.warn("Could not update site activity after navigation:", error.message);
       });
@@ -813,12 +904,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener(() => {
+  refreshBrowsingActivityTracking().catch((error) => {
+    console.warn("Could not update browsing activity after tab removal:", error.message);
+  });
   refreshActiveSiteTracking().catch((error) => {
     console.warn("Could not update site activity after tab removal:", error.message);
   });
 });
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
+  chrome.storage.local.set({ browsingWindowFocused: windowId !== chrome.windows.WINDOW_ID_NONE })
+    .then(() => refreshBrowsingActivityTracking())
+    .catch((error) => console.warn("Could not update browsing activity after window focus changed:", error.message));
   const update = windowId === chrome.windows.WINDOW_ID_NONE
     ? withSiteActivityLock(async () => {
         const state = await chrome.storage.local.get([

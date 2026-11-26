@@ -460,6 +460,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentBlockedSiteActivityDownload = document.getElementById("parent-blocked-site-activity-download");
   const previousSessionsPanel = document.getElementById("previous-sessions-panel");
   const previousSessionsList = document.getElementById("previous-sessions-list");
+  const browsingHistoryPanel = document.getElementById("browsing-history-panel");
+  const browsingHistoryRange = document.getElementById("browsing-history-range");
+  const browsingHistoryRangeNote = document.getElementById("browsing-history-range-note");
+  const browsingHistoryPie = document.getElementById("browsing-history-pie");
+  const browsingHistoryLegend = document.getElementById("browsing-history-legend");
   
   // Whitelist Locking Elements
   const whitelistLockOverlay = document.getElementById("whitelist-lock-overlay");
@@ -535,11 +540,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     refreshSessionActivity();
     refreshParentAccessRequests();
   }, 5000);
+  const browsingHistoryInterval = setInterval(renderBrowsingHistory, 30000);
   feedbackUserId = await getOrCreateFeedbackUserId();
   bindPermanentFeedbackControls();
 
   window.addEventListener("unload", () => {
     clearInterval(sessionActivityInterval);
+    clearInterval(browsingHistoryInterval);
   });
 
   // --- STATE AND VIEW MANAGEMENT ---
@@ -581,6 +588,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         previousSessionsPanel.style.display = canViewPreviousSessions ? "block" : "none";
       }
       if (canViewPreviousSessions) renderPreviousSessions();
+      if (browsingHistoryPanel) {
+        browsingHistoryPanel.style.display = canViewPreviousSessions ? "block" : "none";
+      }
+      if (canViewPreviousSessions) renderBrowsingHistory();
 
       if (parentTestView) {
         parentTestView.style.display = isParentMode && !accountRequired ? "flex" : "none";
@@ -1872,6 +1883,63 @@ document.addEventListener("DOMContentLoaded", async () => {
     } finally {
       previousSessionsRefreshBusy = false;
     }
+  }
+
+  let browsingHistoryRefreshBusy = false;
+
+  async function renderBrowsingHistory() {
+    if (!browsingHistoryPie || !browsingHistoryLegend || browsingHistoryRefreshBusy) return;
+    browsingHistoryRefreshBusy = true;
+    try {
+      let activity = {};
+      if (focusMode === "parent" || focusMode === "child") {
+        if (accountToken) {
+          const response = await fetch(backendPath("/api/auth/profile"), {
+            headers: { Authorization: `Bearer ${accountToken}` }
+          });
+          if (response.ok) {
+            const profile = await response.json();
+            activity = profile.progress?.browsingActivity || {};
+          }
+        }
+      }
+
+      if (focusMode !== "parent") {
+        const stored = await chrome.storage.local.get("browsingActivity");
+        const localActivity = stored.browsingActivity && typeof stored.browsingActivity === "object"
+          ? stored.browsingActivity
+          : {};
+        for (const [date, sites] of Object.entries(localActivity)) {
+          activity[date] = activity[date] || {};
+          for (const [domain, milliseconds] of Object.entries(sites || {})) {
+            activity[date][domain] = Math.max(Number(activity[date][domain]) || 0, Number(milliseconds) || 0);
+          }
+        }
+      }
+
+      const days = Math.max(1, Number(browsingHistoryRange?.value) || 7);
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const periodActivity = {};
+      Object.entries(activity).forEach(([date, sites]) => {
+        if (date < cutoff) return;
+        Object.entries(sites || {}).forEach(([domain, milliseconds]) => {
+          const displayDomain = domain.startsWith("blocked:") ? domain.slice(8) : domain;
+          periodActivity[displayDomain] = (Number(periodActivity[displayDomain]) || 0) + (Number(milliseconds) || 0);
+        });
+      });
+
+      const label = browsingHistoryRange?.selectedOptions[0]?.textContent || "Past week";
+      if (browsingHistoryRangeNote) browsingHistoryRangeNote.textContent = `${label} · active website time`;
+      renderActivityChart(browsingHistoryPie, browsingHistoryLegend, null, periodActivity, false);
+    } catch (error) {
+      console.warn("Could not load browsing history:", error);
+    } finally {
+      browsingHistoryRefreshBusy = false;
+    }
+  }
+
+  if (browsingHistoryRange) {
+    browsingHistoryRange.addEventListener("change", renderBrowsingHistory);
   }
 
   function decideParentAccessRequest(requestId, status, button) {

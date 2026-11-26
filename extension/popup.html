@@ -424,6 +424,33 @@
         </ul>
       </section>
 
+      <section id="browsing-history-panel" class="card browsing-history-panel" style="display: none;">
+        <div class="whitelist-header browsing-history-header">
+          <div>
+            <h3>Browsing History</h3>
+            <p class="permanent-feedback-note">Time spent on active websites, including outside focus sessions.</p>
+          </div>
+          <label class="browsing-range-label" for="browsing-history-range">Range</label>
+        </div>
+        <select id="browsing-history-range" class="browsing-history-range">
+          <option value="1">Past 24 hours</option>
+          <option value="2">Past 2 days</option>
+          <option value="5">Past 5 days</option>
+          <option value="7" selected>Past week</option>
+          <option value="30">Past month</option>
+          <option value="60">Past 2 months</option>
+          <option value="180">Past 6 months</option>
+          <option value="365">Past year</option>
+        </select>
+        <p id="browsing-history-range-note" class="browsing-history-range-note">Past week</p>
+        <div class="session-activity-chart-wrap">
+          <div id="browsing-history-pie" class="session-activity-pie" role="img" aria-label="No browsing history recorded yet"></div>
+          <div id="browsing-history-legend" class="session-activity-legend">
+            <div class="session-activity-empty">Browsing history will appear as you use websites.</div>
+          </div>
+        </div>
+      </section>
+
       <!-- Change Password Section -->
       <section id="sec-change-password" class="card" style="display: none;">
         <div class="whitelist-header">

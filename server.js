@@ -410,6 +410,39 @@ function createExtensionToken() {
   return `af_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
 
+function sanitizeBrowsingActivity(activity) {
+  if (!activity || typeof activity !== "object" || Array.isArray(activity)) return {};
+  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const cleaned = {};
+
+  Object.entries(activity)
+    .filter(([date, sites]) => /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= cutoff && date <= today && sites && typeof sites === "object" && !Array.isArray(sites))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-366)
+    .forEach(([date, sites]) => {
+      const entries = Object.entries(sites)
+        .map(([rawDomain, rawDuration]) => [String(rawDomain).toLowerCase().replace(/^www\./, ""), Number(rawDuration)])
+        .filter(([domain, duration]) => /^[a-z0-9.-]{1,253}$/.test(domain) && !domain.startsWith(".") && !domain.endsWith(".") && Number.isFinite(duration) && duration > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 80);
+      cleaned[date] = Object.fromEntries(entries.map(([domain, duration]) => [domain, Math.min(duration, 24 * 60 * 60 * 1000)]));
+    });
+  return cleaned;
+}
+
+function mergeBrowsingActivity(existing, incoming) {
+  const merged = sanitizeBrowsingActivity(existing);
+  const next = sanitizeBrowsingActivity(incoming);
+  for (const [date, sites] of Object.entries(next)) {
+    merged[date] = merged[date] || {};
+    for (const [domain, duration] of Object.entries(sites)) {
+      merged[date][domain] = Math.max(Number(merged[date][domain]) || 0, duration);
+    }
+  }
+  return sanitizeBrowsingActivity(merged);
+}
+
 function getBearerToken(req) {
   const header = req.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -478,6 +511,7 @@ function sanitizeProgress(progress) {
             activity: sanitizeSessionActivity(item.activity),
           }))
       : [],
+    browsingActivity: sanitizeBrowsingActivity(source.browsingActivity),
     updatedAt: Date.now(),
   };
 }
@@ -859,6 +893,7 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   const incomingProgress = req.body && req.body.progress;
   const existingAccessRequests = Array.isArray(user.progress?.accessRequests) ? user.progress.accessRequests : [];
   const existingSessions = Array.isArray(user.progress?.sessionHistory) ? user.progress.sessionHistory : [];
+  const existingBrowsingActivity = user.progress?.browsingActivity || {};
   user.progress = sanitizeProgress(incomingProgress);
   // The dedicated request and decision routes are authoritative. Keep their
   // records when another device uploads an older or stale progress snapshot.
@@ -874,6 +909,7 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   user.progress.sessionHistory = [...mergedSessions.values()]
     .sort((a, b) => Number(a.startedAt) - Number(b.startedAt))
     .slice(-50);
+  user.progress.browsingActivity = mergeBrowsingActivity(existingBrowsingActivity, user.progress.browsingActivity);
   const activeSession = sanitizeFocusSession(user.activeFocusSession);
   if (activeSession) {
     // An active child session proves the parent-child link was valid when it
@@ -886,6 +922,25 @@ app.post("/api/progress", requireExtensionUser, (req, res) => {
   user.updatedAt = Date.now();
   writeDB(db);
   res.json({ success: true, progress: user.progress });
+});
+
+app.post("/api/browsing-activity", requireExtensionUser, (req, res) => {
+  if (req.body?.focusMode !== "child") {
+    return res.status(403).json({ error: "Only Child mode can sync browsing activity." });
+  }
+  const db = readDB();
+  db.users = Array.isArray(db.users) ? db.users : [];
+  const user = db.users.find((item) => item.extensionToken === req.extensionUser.extensionToken);
+  if (!user) return res.status(401).json({ error: "Please log in again." });
+  if (!user.progress?.childLinked) {
+    return res.status(409).json({ error: "Complete Child Sync before syncing browsing activity." });
+  }
+
+  user.progress = sanitizeProgress(user.progress);
+  user.progress.browsingActivity = mergeBrowsingActivity(user.progress.browsingActivity, req.body.activity);
+  user.updatedAt = Date.now();
+  writeDB(db);
+  return res.json({ success: true });
 });
 
 app.post("/api/access-requests", requireExtensionUser, (req, res) => {

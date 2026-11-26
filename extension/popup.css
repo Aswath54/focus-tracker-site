@@ -1091,6 +1091,42 @@ input:focus {
   order: 6;
 }
 
+#browsing-history-panel {
+  order: 7;
+}
+
+.browsing-history-header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.browsing-history-header > div {
+  flex: 1 1 100%;
+}
+
+.browsing-range-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.browsing-history-range {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 9px 10px;
+  color: var(--text-normal);
+  background: var(--bg-dark-3);
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  font: 12px var(--font-body);
+}
+
+.browsing-history-range-note {
+  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .previous-session-item {
   display: flex;
   justify-content: space-between;
