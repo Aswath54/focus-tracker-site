@@ -619,14 +619,36 @@ async function checkForParentAccessRequests() {
 
     for (const item of newRequests) {
       const notificationId = `access-request-${item.id}`;
-      chrome.notifications.create(notificationId, {
-        type: "basic",
-        iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWj9awAAAABJRU5ErkJggg==",
-        title: "Website access request",
-        message: `Your child requested access to ${item.domain}.`,
-        contextMessage: "Open AuraFocus Parent mode to review the request.",
-        priority: 2
-      });
+      try {
+        await new Promise((resolve, reject) => {
+          chrome.notifications.create(notificationId, {
+            type: "basic",
+            iconUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWj9awAAAABJRU5ErkJggg==",
+            title: "Website access request",
+            message: `Your child requested access to ${item.domain}.`,
+            contextMessage: "Open AuraFocus Parent mode to review the request.",
+            priority: 2
+          }, (createdId) => {
+            const error = chrome.runtime.lastError;
+            if (error) reject(new Error(error.message));
+            else resolve(createdId);
+          });
+        });
+      } catch (error) {
+        console.warn("Chrome could not show an access request notification:", error.message);
+        try {
+          await chrome.windows.create({
+            url: chrome.runtime.getURL("popup.html"),
+            type: "popup",
+            width: 380,
+            height: 620,
+            focused: true
+          });
+        } catch (windowError) {
+          console.warn("Could not open AuraFocus for the access request:", windowError.message);
+          continue;
+        }
+      }
       notifiedIds.add(item.id);
     }
 
