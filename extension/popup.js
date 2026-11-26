@@ -417,9 +417,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentCustomMinutesInput = document.getElementById("parent-custom-minutes");
   const btnParentSetCustom = document.getElementById("btn-parent-set-custom");
   const btnParentStartFocus = document.getElementById("btn-parent-start-focus");
-  const parentSessionPassword = document.getElementById("parent-session-password");
-  const parentSessionPasswordConfirm = document.getElementById("parent-session-password-confirm");
-  const parentStopPassword = document.getElementById("parent-stop-password");
   const btnParentStopFocus = document.getElementById("btn-parent-stop-focus");
   const parentStopControls = document.getElementById("parent-stop-controls");
   const parentStopError = document.getElementById("parent-stop-error");
@@ -774,9 +771,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       btnParentResetSync.title = isActive
         ? "Stop the active child session before resetting sync."
         : "Clear the saved child link so Child Sync can be completed again.";
-    }
-    if (!isActive && parentStopPassword) {
-      parentStopPassword.value = "";
     }
   }
 
@@ -1140,21 +1134,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         alert("Link a child first by completing child sync before starting a parent session.");
         return;
       }
-      const sessionPassword = parentSessionPassword ? parentSessionPassword.value : "";
-      const sessionPasswordConfirm = parentSessionPasswordConfirm ? parentSessionPasswordConfirm.value : "";
-      if (sessionPassword.length < 4 || sessionPassword !== sessionPasswordConfirm) {
-        alert(sessionPassword.length < 4 ? "Create a temporary session password with at least 4 characters." : "Temporary passwords do not match.");
-        return;
-      }
       chrome.runtime.sendMessage({
         type: "START_SESSION",
         durationSeconds: parentDurationSeconds,
-        allowedUrls: currentAllowedUrls,
-        sessionPassword
+        allowedUrls: currentAllowedUrls
       }, (response) => {
         if (response && response.success) {
-          if (parentSessionPassword) parentSessionPassword.value = "";
-          if (parentSessionPasswordConfirm) parentSessionPasswordConfirm.value = "";
           refreshState();
           refreshSessionActivity();
         } else {
@@ -1398,14 +1383,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnParentStopFocus) {
     btnParentStopFocus.addEventListener("click", () => {
       if (focusMode !== "parent") return;
-      const password = parentStopPassword ? parentStopPassword.value : "";
-      if (!password) {
-        showError(parentStopError, "Temporary session password required.");
-        return;
-      }
-      chrome.runtime.sendMessage({ type: "STOP_SESSION", password }, (response) => {
+      chrome.runtime.sendMessage({ type: "STOP_SESSION" }, (response) => {
         if (response && response.success) {
-          if (parentStopPassword) parentStopPassword.value = "";
           if (parentStopError) parentStopError.style.display = "none";
           refreshState();
           refreshSessionActivity();
