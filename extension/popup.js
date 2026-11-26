@@ -458,8 +458,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const parentGroupActivityImageDownload = document.getElementById("parent-group-activity-image-download");
   const parentBlockedSiteActivityList = document.getElementById("parent-blocked-site-activity-list");
   const parentBlockedSiteActivityDownload = document.getElementById("parent-blocked-site-activity-download");
-  const previousSessionsPanel = document.getElementById("previous-sessions-panel");
-  const previousSessionsList = document.getElementById("previous-sessions-list");
   const browsingHistoryPanel = document.getElementById("browsing-history-panel");
   const browsingHistoryRange = document.getElementById("browsing-history-range");
   const browsingHistoryRangeNote = document.getElementById("browsing-history-range-note");
@@ -581,17 +579,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const parentFeaturesReady = !isParentMode || (hasSignedInAccount && childLinked && childSyncCompletedAt > 0 && hasParentPassword);
       const showParentOnlyPanels = isParentMode;
       updateChildTimerControls();
-      const canViewPreviousSessions = !isAccountMode || (
+      const canViewBrowsingHistory = !isAccountMode || (
         hasSignedInAccount && (isParentMode ? childLinked && childSyncCompletedAt > 0 : childSyncReady)
       );
-      if (previousSessionsPanel) {
-        previousSessionsPanel.style.display = canViewPreviousSessions ? "block" : "none";
-      }
-      if (canViewPreviousSessions) renderPreviousSessions();
       if (browsingHistoryPanel) {
-        browsingHistoryPanel.style.display = canViewPreviousSessions ? "block" : "none";
+        browsingHistoryPanel.style.display = canViewBrowsingHistory ? "block" : "none";
       }
-      if (canViewPreviousSessions) renderBrowsingHistory();
+      if (canViewBrowsingHistory) renderBrowsingHistory();
 
       if (parentTestView) {
         parentTestView.style.display = isParentMode && !accountRequired ? "flex" : "none";
@@ -1832,56 +1826,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       console.warn("Could not load child access requests:", error);
     } finally {
       accessRequestRefreshBusy = false;
-    }
-  }
-
-  let previousSessionsRefreshBusy = false;
-
-  async function renderPreviousSessions() {
-    if (!previousSessionsList || previousSessionsRefreshBusy) return;
-    previousSessionsRefreshBusy = true;
-    try {
-      let sessions = [];
-      if (focusMode === "self") {
-        const stored = await chrome.storage.local.get("sessionHistory");
-        sessions = Array.isArray(stored.sessionHistory) ? stored.sessionHistory : [];
-      } else if (accountToken) {
-        const response = await fetch(backendPath("/api/auth/profile"), {
-          headers: { Authorization: `Bearer ${accountToken}` }
-        });
-        if (response.ok) {
-          const profile = await response.json();
-          sessions = Array.isArray(profile.progress?.sessionHistory) ? profile.progress.sessionHistory : [];
-        }
-      }
-
-      previousSessionsList.innerHTML = "";
-      sessions.slice().sort((a, b) => Number(b.startedAt) - Number(a.startedAt)).slice(0, 10).forEach((session) => {
-        const item = document.createElement("li");
-        item.className = "previous-session-item";
-        const date = document.createElement("span");
-        date.className = "previous-session-date";
-        date.textContent = Number(session.endedAt)
-          ? new Date(Number(session.endedAt)).toLocaleString()
-          : "Completed session";
-        const duration = document.createElement("span");
-        duration.className = "previous-session-duration";
-        duration.textContent = Number(session.durationMs) > 0
-          ? formatActivityDuration(Number(session.durationMs))
-          : "Duration unavailable";
-        item.append(date, duration);
-        previousSessionsList.appendChild(item);
-      });
-      if (!previousSessionsList.children.length) {
-        const empty = document.createElement("li");
-        empty.className = "session-activity-empty";
-        empty.textContent = "No previous sessions yet.";
-        previousSessionsList.appendChild(empty);
-      }
-    } catch (error) {
-      console.warn("Could not load previous sessions:", error);
-    } finally {
-      previousSessionsRefreshBusy = false;
     }
   }
 
