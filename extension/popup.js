@@ -569,6 +569,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const isAccountMode = isParentMode || isChildMode;
       const hasSignedInAccount = !!(accountToken && accountUser);
       const accountRequired = isAccountMode && !hasSignedInAccount;
+      const parentFeaturesReady = !isParentMode || (hasSignedInAccount && childLinked && childSyncCompletedAt > 0 && hasParentPassword);
       const showParentOnlyPanels = isParentMode;
       updateChildTimerControls();
 
@@ -596,9 +597,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         accountModeNote.style.display = accountRequired ? "block" : "none";
       }
       if (secPermanentFeedback) {
-        secPermanentFeedback.style.display = accountRequired || isChildMode ? "none" : "block";
+        secPermanentFeedback.style.display = accountRequired || isChildMode || !parentFeaturesReady ? "none" : "block";
       }
-      secWhitelist.style.display = isChildMode && !childSyncReady ? "none" : "block";
+      secWhitelist.style.display = (isChildMode && !childSyncReady) || !parentFeaturesReady ? "none" : "block";
       if (whitelistAddSiteRow) whitelistAddSiteRow.style.display = isChildMode ? "none" : "flex";
       secChangePassword.style.display = "none";
       if (parentControlPanel) {
@@ -654,7 +655,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.storage.local.get(["showFeedbackPrompt", "feedbackPromptSessionId"], (feedbackState) => {
           if (feedbackState.showFeedbackPrompt && feedbackState.feedbackPromptSessionId) {
             showSection(secFeedback);
-            if (secWhitelist) secWhitelist.style.display = "block";
+            if (secWhitelist) secWhitelist.style.display = parentFeaturesReady ? "block" : "none";
             if (secChangePassword) secChangePassword.style.display = "none";
             if (parentControlPanel) parentControlPanel.style.display = "none";
             if (parentTimerPanel) parentTimerPanel.style.display = "none";
@@ -666,7 +667,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (secActiveSession) secActiveSession.style.display = "none";
             if (secIdleSession) secIdleSession.style.display = "none";
             if (secFeedback) secFeedback.style.display = "none";
-            if (secWhitelist) secWhitelist.style.display = "block";
+            if (secWhitelist) secWhitelist.style.display = parentFeaturesReady ? "block" : "none";
             if (secChangePassword) secChangePassword.style.display = "none";
             if (parentControlPanel) parentControlPanel.style.display = hasSignedInAccount && (!childLinked || !childSyncCompletedAt || !hasParentPassword) ? "block" : "none";
             if (childSyncPanel) childSyncPanel.style.display = "none";
