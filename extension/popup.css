@@ -653,6 +653,12 @@ input:focus {
 
 .add-site-row input {
   flex: 1;
+  min-width: 100px;
+}
+
+.add-site-row #new-site-category {
+  max-width: 88px;
+  min-width: 74px;
 }
 
 .site-list {
@@ -848,6 +854,10 @@ input:focus {
 }
 
 .history-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   list-style: none;
   margin: 10px 0 4px;
   padding: 8px 8px 4px;
@@ -857,6 +867,10 @@ input:focus {
   text-transform: uppercase;
   color: var(--primary-gold);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-group-add-btn {
+  flex: 0 0 auto;
 }
 
 .history-list .site-item {

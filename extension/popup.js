@@ -434,6 +434,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Whitelist Elements
   const newSiteInput = document.getElementById("new-site-input");
+  const newSiteCategorySelect = document.getElementById("new-site-category");
   const btnAddSite = document.getElementById("btn-add-site");
   const whitelistAddSiteRow = document.querySelector("#sec-whitelist .add-site-row");
   const whitelistList = document.getElementById("whitelist-list");
@@ -1316,7 +1317,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Prepare list
     const updatedUrls = [...currentAllowedUrls, inputVal];
-    saveWhitelist(updatedUrls);
+    const group = newSiteCategorySelect?.value || getHistoryGroup(inputVal);
+    saveWhitelist(updatedUrls, { groupByDomain: { [inputVal]: group } });
   }
 
   function deleteWhitelistItem(index) {
@@ -1326,7 +1328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     saveWhitelist(updatedUrls);
   }
 
-  function saveWhitelist(updatedUrls) {
+  function saveWhitelist(updatedUrls, options = {}) {
     if (focusMode === "child") return;
     // If active and whitelisted is locked, we need the password, but we've already checked isWhitelistUnlocked in the popup.
     // So we pass the unlock password if we verified it, or nothing if idle.
@@ -1336,12 +1338,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       type: "UPDATE_WHITELIST",
       allowedUrls: updatedUrls,
       password: password
-    }, (response) => {
+    }, async (response) => {
       if (response && response.success) {
-        // If there was an item added, save it to history!
-        if (updatedUrls.length > currentAllowedUrls.length) {
-          const addedItem = updatedUrls[updatedUrls.length - 1];
-          addToWhitelistHistory(addedItem);
+        const addedItems = updatedUrls.filter(domain => !currentAllowedUrls.includes(domain));
+        for (const domain of addedItems) {
+          await addToWhitelistHistory(domain, options.groupByDomain?.[domain]);
         }
 
         newSiteInput.value = "";
@@ -1460,7 +1461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  async function addToWhitelistHistory(domain) {
+  async function addToWhitelistHistory(domain, selectedGroup) {
     const result = await chrome.storage.local.get("whitelistHistory");
     let history = result.whitelistHistory || [];
     
@@ -1471,7 +1472,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     history.unshift({
       domain: domain,
       timestamp: Date.now(),
-      group: getHistoryGroup(domain)
+      group: historyGroups.includes(selectedGroup) ? selectedGroup : getHistoryGroup(domain)
     });
     
     // Limit to last 50 items
@@ -1483,7 +1484,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHistory(historySearch ? historySearch.value.trim() : "");
   }
 
-  async function addSiteDirectly(domain) {
+  async function addSiteDirectly(domain, group) {
     const normalizedDomain = String(domain || "").trim().toLowerCase().replace(/^www\./, "");
     if (!normalizedDomain) return;
 
@@ -1492,7 +1493,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     const updatedUrls = [...currentAllowedUrls, normalizedDomain];
-    saveWhitelist(updatedUrls);
+    saveWhitelist(updatedUrls, { groupByDomain: { [normalizedDomain]: group } });
+  }
+
+  function addCategoryToWhitelist(group, previousSites) {
+    if (focusMode === "child") return;
+    const categorySites = Array.isArray(HISTORY_GROUP_DOMAINS[group]) ? HISTORY_GROUP_DOMAINS[group] : [];
+    const previousCategorySites = previousSites.map(item => item.domain);
+    const additions = [...new Set([...categorySites, ...previousCategorySites].map(normalizeHistoryDomain))]
+      .filter(domain => domain && !currentAllowedUrls.includes(domain));
+    if (!additions.length) {
+      showError(whitelistActionError, `All sites in ${group} are already whitelisted.`);
+      return;
+    }
+    const updatedUrls = [...currentAllowedUrls, ...additions];
+    const groupByDomain = Object.fromEntries(additions.map(domain => [domain, group]));
+    saveWhitelist(updatedUrls, { groupByDomain });
   }
 
   async function updateHistoryGroup(domain, group) {
@@ -1518,6 +1534,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       ? groupState.historyGroups.filter(group => typeof group === "string" && group.trim()).slice(0, 30)
       : [];
     historyGroups = [...new Set([...HISTORY_GROUPS, ...savedGroups])];
+    if (newSiteCategorySelect) {
+      const previousSelection = historyGroups.includes(newSiteCategorySelect.value)
+        ? newSiteCategorySelect.value
+        : getHistoryGroup(newSiteInput?.value || "");
+      newSiteCategorySelect.innerHTML = "";
+      historyGroups.forEach((group) => {
+        const option = document.createElement("option");
+        option.value = group;
+        option.textContent = group;
+        newSiteCategorySelect.appendChild(option);
+      });
+      newSiteCategorySelect.value = previousSelection;
+    }
 
     const result = await chrome.storage.local.get("whitelistHistory");
     if (renderVersion !== historyRenderVersion) return;
@@ -1567,27 +1596,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (renderVersion !== historyRenderVersion) return;
     historyList.innerHTML = "";
 
-    if (filteredHistory.length === 0) {
-      const emptyLi = document.createElement("li");
-      emptyLi.className = "site-item";
-      emptyLi.style.justifyContent = "center";
-      emptyLi.style.color = "var(--text-muted)";
-      emptyLi.style.fontSize = "11px";
-      emptyLi.textContent = filterText ? "No matching history." : "No previous history.";
-      historyList.appendChild(emptyLi);
-      return;
-    }
-
     const groupedHistory = historyGroups.map(group => ({
       group,
       items: filteredHistory.filter(item => getHistoryGroup(item.domain, item.group) === group)
-    })).filter(section => section.items.length > 0);
+    })).filter(section => section.items.length > 0 || Array.isArray(HISTORY_GROUP_DOMAINS[section.group]));
 
     groupedHistory.forEach(({ group, items }) => {
       const groupHeader = document.createElement("li");
       groupHeader.className = "history-group-header";
-      groupHeader.textContent = group;
+      const groupName = document.createElement("span");
+      groupName.textContent = group;
+      const addAllButton = document.createElement("button");
+      addAllButton.type = "button";
+      addAllButton.className = "btn-add-history history-group-add-btn";
+      addAllButton.textContent = "Add all";
+      addAllButton.setAttribute("aria-label", `Add all ${group} sites to whitelist`);
+      addAllButton.addEventListener("click", () => addCategoryToWhitelist(group, items));
+      groupHeader.append(groupName, addAllButton);
       historyList.appendChild(groupHeader);
+
+      if (!items.length && filteredHistory.length === 0 && group === HISTORY_GROUPS[0]) {
+        const emptyLi = document.createElement("li");
+        emptyLi.className = "site-item";
+        emptyLi.style.justifyContent = "center";
+        emptyLi.style.color = "var(--text-muted)";
+        emptyLi.style.fontSize = "11px";
+        emptyLi.textContent = filterText ? "No matching history." : "No previous history. Use Add all to whitelist this category.";
+        historyList.appendChild(emptyLi);
+      }
 
       items.forEach(item => {
         const li = document.createElement("li");
@@ -1624,10 +1660,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               return;
             }
             historyGroups.push(cleanName);
+            item.group = cleanName;
             chrome.storage.local.set({ historyGroups });
             updateHistoryGroup(item.domain, cleanName);
             return;
           }
+          item.group = groupSelect.value;
           updateHistoryGroup(item.domain, groupSelect.value);
         });
 
@@ -1635,7 +1673,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         addBtn.className = "btn-add-history";
         addBtn.textContent = "Add";
         addBtn.addEventListener("click", () => {
-          addSiteDirectly(item.domain);
+          addSiteDirectly(item.domain, item.group);
         });
 
         actions.appendChild(groupSelect);
