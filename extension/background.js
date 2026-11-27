@@ -959,6 +959,10 @@ async function handleMessages(request) {
       return { success: true, state: await getExtensionState() };
     }
 
+    if (request.type === "GET_AUTOMATIC_ALLOWED_DOMAINS") {
+      return { success: true, domains: EDUCATIONAL_DOMAINS.map((domain) => domain.split("/")[0]) };
+    }
+
     if (request.type === "REQUEST_SITE_ACCESS") {
       const account = await chrome.storage.local.get(["accountToken", "focusMode", "isFocusActive"]);
       if (!account.accountToken || account.focusMode !== "child" || !account.isFocusActive) {

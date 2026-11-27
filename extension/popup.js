@@ -1496,14 +1496,40 @@ document.addEventListener("DOMContentLoaded", async () => {
     saveWhitelist(updatedUrls, { groupByDomain: { [normalizedDomain]: group } });
   }
 
-  function addCategoryToWhitelist(group, previousSites) {
+  let automaticAllowedDomainsCache = null;
+
+  function getAutomaticAllowedDomains() {
+    if (automaticAllowedDomainsCache) return Promise.resolve(automaticAllowedDomainsCache);
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ type: "GET_AUTOMATIC_ALLOWED_DOMAINS" }, (response) => {
+        if (chrome.runtime.lastError || !response?.success || !Array.isArray(response.domains)) {
+          reject(new Error("Could not load the automatically allowed sites."));
+          return;
+        }
+        automaticAllowedDomainsCache = response.domains.map(normalizeHistoryDomain);
+        resolve(automaticAllowedDomainsCache);
+      });
+    });
+  }
+
+  async function addCategoryToWhitelist(group, previousSites) {
     if (focusMode === "child") return;
     const categorySites = Array.isArray(HISTORY_GROUP_DOMAINS[group]) ? HISTORY_GROUP_DOMAINS[group] : [];
     const previousCategorySites = previousSites.map(item => item.domain);
+    let automaticAllowedDomains;
+    try {
+      automaticAllowedDomains = await getAutomaticAllowedDomains();
+    } catch (error) {
+      showError(whitelistActionError, error.message);
+      return;
+    }
+    const isAutomaticallyAllowed = (domain) => automaticAllowedDomains.some(allowedDomain =>
+      domain === allowedDomain || domain.endsWith(`.${allowedDomain}`)
+    );
     const additions = [...new Set([...categorySites, ...previousCategorySites].map(normalizeHistoryDomain))]
-      .filter(domain => domain && !currentAllowedUrls.includes(domain));
+      .filter(domain => domain && !currentAllowedUrls.includes(domain) && !isAutomaticallyAllowed(domain));
     if (!additions.length) {
-      showError(whitelistActionError, `All sites in ${group} are already whitelisted.`);
+      showError(whitelistActionError, `All non-automatic sites in ${group} are already whitelisted.`);
       return;
     }
     const updatedUrls = [...currentAllowedUrls, ...additions];
